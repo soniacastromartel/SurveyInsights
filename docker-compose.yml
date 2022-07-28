@@ -1,0 +1,78 @@
+# docker-compose.yml #
+version: "3.4"
+
+# networks:
+#   laravel:
+
+services:
+  app2:
+    volumes:
+      - ./proyecto:/app
+      # - "./build/php/apache2.conf:/etc/apache2/apache2.conf"
+      - "./apache2-laravel.conf:/etc/apache2/sites-available/000-default.conf"
+      - "./apache/log:/var/log/apache2"
+      - "./php.ini:/usr/local/etc/php/php.ini"
+    working_dir: /app
+    command: "sh start.sh"
+    restart: unless-stopped
+    expose: 
+      - 80
+      - 8000
+
+    ports:
+      - 80:80
+      - 8000:8000
+      - 443:443
+      # - 9090:9090
+    network_mode: "host"
+    build:
+        context: ./
+        dockerfile: Dockerfile
+    environment:
+      APP_ENV: local
+      CONTAINER_ROLE: app
+    # networks:
+    #    - laravel
+  # mysql8:
+  #   image: mysql:8.0.23
+  #   command: --default-authentication-plugin=mysql_native_password
+  #   container_name: mysql8
+  #   restart: unless-stopped
+  #   tty: true
+  #   ports:
+  #     - "3306:3306"
+  #   environment:
+  #     MYSQL_DATABASE: encuestas
+  #     MYSQL_USER: root
+  #     MYSQL_PASSWORD: secret
+  #     MYSQL_ROOT_PASSWORD: secret
+  #     SERVICE_TAGS: dev
+  #     SERVICE_NAME: mysql8
+  #   network_mode: "host"
+  #   # networks:
+  #   #    - laravel
+  #   volumes:
+  #     - ./mysql:/var/lib/mysql:rw
+
+  npm:
+    image: node:13.7
+    container_name: npm
+    volumes:
+      - ./:/app
+    working_dir: /app
+    entrypoint: ['npm']
+  
+  composer:
+    image: composer:latest
+    container_name: composer
+    volumes:
+      - "./:/app"
+    working_dir: /app
+    depends_on:
+      - app2
+    # networks:
+    #    - laravel
+ 
+  
+volumes:
+    database-data: {}
