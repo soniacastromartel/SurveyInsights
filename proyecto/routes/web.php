@@ -24,5 +24,12 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', 'App\Http\Controllers\SurveyController@index')->name('survey.index');
 Route::post('/survey/calculate', 'App\Http\Controllers\SurveyController@calculate')->name('survey.calculate');
-Route::post('/survey/preview', 'App\Http\Controllers\SurveyController@preview')->name('survey.preview');
+Route::get('/survey/preview', 'App\Http\Controllers\SurveyController@preview')->name('survey.preview');
 Route::get('/survey/download', 'App\Http\Controllers\SurveyController@download')->name('survey.download');
+Route::get('/survey/view', 'App\Http\Controllers\SurveyController@view')->name('survey.view');
+Route::get('/survey/welcome', 'App\Http\Controllers\SurveyController@welcome')->name('survey.welcome');
+
+Route::get('/views/header', function() {
+    return view('header');
+})->name('header');
+
