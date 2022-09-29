@@ -307,6 +307,7 @@ background-color: #C0C0C0;
                     <br>
                     @if ( $loop->iteration == 5 )
                     <div class="googleChartTitle col-md-4 text-center" style="margin: 0;padding: 0;">
+                    <div><strong>NPS: </strong>{{$totalSatisfaccion['nps']}}%</div>
                     <div id ="question5" class="bar-chart"></div>
                     </div>
                     @endif
@@ -326,7 +327,6 @@ background-color: #C0C0C0;
 
 
 <script type="text/javascript">
-
     var GC= '#bc012e';
     var TF= '#1A73E8';
 
@@ -389,7 +389,6 @@ $(window).scroll(function(){
 });
 
 });
-
 
  
 

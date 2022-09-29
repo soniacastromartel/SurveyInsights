@@ -32,7 +32,7 @@ class SurveyController extends Controller
         $servicesType = $this->getServices();
 
         return view('surveys', [
-            'title'        => 'ICOT ENCUESTAS', 'provinces'    => ['Las Palmas', 'Tenerife'], 'surveys'      => $surveys, 'patientsType' => $patientsType, 'servicesType' => $servicesType
+            'title'        => 'ENCUESTAS DE SATISFACCIÓN', 'provinces'    => ['Las Palmas', 'Tenerife'], 'surveys'      => $surveys, 'patientsType' => $patientsType, 'servicesType' => $servicesType
         ]);
     }
 
@@ -236,7 +236,8 @@ class SurveyController extends Controller
     {
         $servicesType = $this->getServices();
         $codetf = '72';
-        $codelp = '79';
+        // $codelp = '79';
+        $codelp =[ '77', '78','79'];
 
 
         $whereCond = $where;
@@ -265,12 +266,20 @@ class SurveyController extends Controller
         }
 
         $totalServiciosLP = $this->icotSurvey->select(
-            'select distinct lime_answers.answer as servicio, count(' . $this->surveyName . '.' . '285213X7X' . $codelp . ') as total
+            'select distinct lime_answers.answer as servicio, count(' . $this->surveyName . '.' . '285213X7X' . $codelp[2] . ') as total
                                                     from  ' .  $this->surveyName .
-                '   join lime_answers on lime_answers.code = ' .   $this->surveyName . '.' . '285213X7X' . $codelp . ' and lime_answers.qid = ' . $codelp .
+                '   join lime_answers on lime_answers.code = ' .   $this->surveyName . '.' . '285213X7X' . $codelp[2] . ' and lime_answers.qid = ' . $codelp[2] .
                 ' where ' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ' between ? and ? '  . $whereCond
                 . ' group by 1',
             $this->periodTime
+        );
+
+        $totalOtrosCentros =$this->icotSurvey->select(
+            'select(select count(' . $this->surveyName . '.' . '285213X7X' . $codelp[0] . ')
+            from  ' .  $this->surveyName .
+' where ' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . '  between ? and ?)+(select count(' . $this->surveyName . '.' . '285213X7X' . $codelp[1] . ')
+from  ' .  $this->surveyName .
+' where ' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . '  between ? and ?)as otros',  $this->periodTime
         );
 
 
@@ -287,6 +296,16 @@ class SurveyController extends Controller
                 $totalServicesLP[] = (object) array('servicio' => $service, 'total' => 0);
             }
         }
+
+        foreach ($totalServicesLP as $tservicelp) {
+            if ($tservicelp->servicio== 'Otros'){
+                $tservicelp-> total +=  $totalOtrosCentros[0]->otros;
+            }
+
+        }
+
+        // $totalServicesLP[] = (object) array('servicio' => 'Otros', 'total' => $totalOtrosCentros[0]->otros);
+
 
 
         return ['Tenerife' => $totalServicesTF, 'Las Palmas' => $totalServicesLP];
@@ -322,6 +341,7 @@ class SurveyController extends Controller
         $totalSatisfaccion['promotores'] =0;
         $totalSatisfaccion['pasivos'] =0;
         $totalSatisfaccion['detractores'] =0;
+        $totalSatisfaccion['nps'] =0;
 
         $promotores = $this->icotSurvey->select(
             'select count(' . $this->surveyName . '.' . '285213X8X76SQ005' . ') as promotores
@@ -355,23 +375,11 @@ class SurveyController extends Controller
             
         }
 
-        // $detractores =  $this->icotSurvey->select(
-        //     'select distinct (select count(' . $this->surveyName . '.' . '285213X8X76SQ005' .')                                    
-        //     from  ' .  $this->surveyName .
-        //         ' where ' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ' between ? and ? '
-        //         . $whereCond .
-        //         ' and 285213X8X76SQ005="A3"', $this->periodTime.')+(select count(' . $this->surveyName . '.' . '285213X8X76SQ005' . ')                                    from  ' .  $this->surveyName .
-        //         ' where ' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ' between ? and ? '
-        //         . $whereCond .
-        //         ' and 285213X8X76SQ005="A2"', $this->periodTime.')+(select count(' . $this->surveyName . '.' . '285213X8X76SQ005' . ')                                    from  ' .  $this->surveyName .
-        //         ' where ' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ' between ? and ? '
-        //         . $whereCond .
-        //         ' and 285213X8X76SQ005="A1"', $this->periodTime.') as detractores  from  ' .  $this->surveyName
-        // );
 
         $totalSatisfaccion['promotores'] = $promotores[0]->promotores;
         $totalSatisfaccion['pasivos'] = $pasivos[0]->pasivos;
         $totalSatisfaccion['detractores'] = $detractores;
+        $totalSatisfaccion['nps'] =round(($promotores[0]->promotores- $detractores)/($promotores[0]->promotores+$pasivos[0]->pasivos+$detractores)*100,1);
 
         return $totalSatisfaccion;
     }
@@ -468,6 +476,15 @@ class SurveyController extends Controller
         }
     }
 
+//     function queryEncuestados ($params) {
+//         $totalEncuestados =[];
+// $totalEncuestados= $th
+
+
+
+//         return $totalEncuestados;
+//     }
+
 
     /**
      * Método desde el que se hace la descarga del informe
@@ -480,7 +497,8 @@ class SurveyController extends Controller
             $datos = $this->getData($request);
             $render = view('preview_data', $datos)->render();
             $renderCover = view('cover')->render();
-            $header = view()->make('header')->render();
+            $header = view()->make('header')->render();            
+
             $pdf = new Pdf;
             $pdf->addCover($renderCover);
             $pdf->setOptions([
@@ -488,6 +506,7 @@ class SurveyController extends Controller
                 'header-html' => $header,
                 'header-line',
                 'footer-right'     => "[page]",
+                'footer-left'     => $datos['title'],
                 'footer-font-size' => 10,
                 'footer-line',
                 'margin-top' => 25,
@@ -495,8 +514,6 @@ class SurveyController extends Controller
 
             ]);
             $pdf->addPage($render);
-            // $cover = public_path('OutDocument.html');
-
             $dataPDF = public_path('report.pdf');
             if (!$pdf->saveAs($dataPDF)) {
                 $error = $pdf->getError();
@@ -522,7 +539,10 @@ class SurveyController extends Controller
     {
         try {
             $datos = $this->getData($request);
-            return view('preview_data', $datos);
+            $render = view('preview_data', $datos)->render();
+
+            // return view('preview_data', $datos);
+            return $render;
         } catch (\Exception $e) {
             return response()->json([
                 'success' => 'false',
@@ -573,8 +593,6 @@ class SurveyController extends Controller
             //Parametros:
             // -- Provincia (C1 Tenerife / C2 Las Palmas)
             $totalProvincias = $this->queryProvincias($params);
-
-
             $totalProvincia = [];
             foreach ($totalProvincias as $tProv) {
                 if (is_array($tProv)) {
@@ -611,9 +629,7 @@ class SurveyController extends Controller
             $totalExperiencia = $this->queryExperiencia($where);
             $totalCentros = $this->queryCentros($where);
             $totalServicios = $this->queryServicios($where);
-
             $totalSatisfaccion = $this->queryNetPromoterScore($where);
-            // $servicesType = $this -> getServices();
 
             $preguntas = $this->icotSurvey->select('select distinct concat( \'PREGUNTA\', \'  \', substr(q.title, 5, 1), \':\') AS n_pregunta, q.question,  substr(q.title, 5, 1) as pregunta
                                                     from lime_questions q
@@ -647,7 +663,7 @@ class SurveyController extends Controller
             }
 
             $data = array(
-                'title'               => 'ICOT ENCUESTAS',
+                'title'               => 'INFORME ENCUESTAS',
                 'period'              => $orgPeriod,
                 'totalProvincia'      => $totalProvincia,
                 'totalProvincias'      => $totalProvincias,
@@ -655,7 +671,6 @@ class SurveyController extends Controller
                 'totalEdad'           => $totalEdades,
                 'totalExp'            => $totalExperiencia,
                 'totalSatisfaccion'   => $totalSatisfaccion,
-                // 'servicesType'        => $servicesType,
                 'totalServiciosTF'    => $totalServicios['Tenerife'],
                 'totalServiciosLPA'   => $totalServicios['Las Palmas'],
                 'preguntas'           => $preguntas,
@@ -675,14 +690,6 @@ class SurveyController extends Controller
             ], 400);
         }
     }
-
-    // public function whatToDo($whattodo, $datos){
-    //     if ($whattodo=='download'){         
-    //         return \PDF::loadView('preview_data', $datos)->download('estadistica.pdf');
-    //     }else{
-    //         return \PDF::loadView('preview_data', $datos);
-    //     }
-    // }
 
 
 }
