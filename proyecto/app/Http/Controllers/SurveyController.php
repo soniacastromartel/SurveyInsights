@@ -540,7 +540,6 @@ from  ' .  $this->surveyName .
         try {
             $datos = $this->getData($request);
             $render = view('preview_data', $datos)->render();
-
             // return view('preview_data', $datos);
             return $render;
         } catch (\Exception $e) {
@@ -634,11 +633,12 @@ from  ' .  $this->surveyName .
             $preguntas = $this->icotSurvey->select('select distinct concat( \'PREGUNTA\', \'  \', substr(q.title, 5, 1), \':\') AS n_pregunta, q.question,  substr(q.title, 5, 1) as pregunta
                                                     from lime_questions q
                                                     where q.title like \'SQ%\' and q.sid = ' . $params['survey_id'] . '
+                                                    and q.title not like \'SQ006%\'
                                                     order by q.qid
                                                     ');
 
 
-            foreach ($preguntas as $pregunta) {
+            foreach ($preguntas as $pregunta) { 
                 $campoPregunta =   $this->fields[env('PARAM_QUESTION' . $pregunta->pregunta)]['name'];
                 $qid = substr($campoPregunta, 9, 2);
                 $whereCond = $where;

@@ -301,7 +301,7 @@ background-color: #C0C0C0;
         @foreach ($preguntas as $pregunta)
             @foreach ($porcentPreg as $ppreg)
 
-                @if ( $loop->iteration == $pregunta->pregunta )
+                @if ( $loop->iteration == $pregunta->pregunta && $loop->iteration < 6)
                     <strong>PREGUNTA {{$pregunta->pregunta}} : {{$ppreg}}% </strong><br>
                     {{$pregunta->question}}  <br>
                     <br>
