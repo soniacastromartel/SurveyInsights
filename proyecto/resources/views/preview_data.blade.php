@@ -21,8 +21,8 @@
            
         }
         .column-chart {
-            width: 450px;
-            height:400px;
+            width: 400px;
+            height:350px;
             /* margin-left: 40px; */
         
             /* margin: 0 auto; */
@@ -55,12 +55,12 @@
             float:left;
         }
 
-        /* body {
+        body {
     margin:     0;
     padding:    0;
-    width:      21cm;
-    height:     29.7cm;
-} */
+    /* width:      21cm;
+    height:     29.7cm; */
+}
 
 
 /* Printable area */
@@ -122,7 +122,7 @@ background-color: #C0C0C0;
 <br>
 <h1>{{$title}}</h1>
 
-<div class="px-4">
+<div class="">
     <div class="d-flex flex-row text-left mt-4 pregunta">
         ¿Cuándo?
     </div>
@@ -138,7 +138,8 @@ background-color: #C0C0C0;
     <div class="d-flex flex-row text-left  mt-2" style="font-size: 12pt;">
         Pacientes
         @if ( $params['patient_id'] != '-1' )
-            de {{ $params['patient_id'] }}
+            de {{ $params['patient_name'] }}
+           
         @endif
         de los centros de rehabilitación de
         @if ( $params['province_id'] == 'TODAS' )
@@ -157,9 +158,11 @@ background-color: #C0C0C0;
     </div>
 
     <div class="d-flex flex-row text-left  mt-2">
+        <ul>
         @foreach ($preguntas as $pregunta)
-        {{$pregunta->n_pregunta}} {{$pregunta->question}} <br>
+        <li><strong>{{$pregunta->n_pregunta}}</strong> {{$pregunta->question}}</li>
         @endforeach
+        </ul>
     </div>
 
 
@@ -189,11 +192,10 @@ background-color: #C0C0C0;
         @endif
     </div>
 
-    @if ( $params['province_id'] == 'TODAS')
-    <div class="googleChartTitle col-md-4 text-center">
-        <div id="chartProvincias" class="column-chart" style="margin: 0 auto;"></div>
+    <!-- encuestas por mes -->
+    <div class="googleChartTitle">
+        <div id="chartMonths" class="column-chart"></div>
      </div>
-    @endif
 
 
      <div style="margin-top: 50px;margin-bottom: 50px;" class="page_break">
@@ -278,17 +280,17 @@ background-color: #C0C0C0;
 
     @if ( $params['patient_id'] != '-1' )
     <div class="d-flex flex-row text-left mt-2 text-center pregunta" style="margin-top:100px"> 
-    {{ $params['patient_id'] }}
+    <!-- {{ $params['patient_name'] }} -->
     </div>     
     @endif
 
     
-     <div style="margin-top: 50px;margin-bottom: 50px;" class="page_break">
+     <div style="margin-top: 50px;margin-bottom: 40px;" class="page_break">
      <h2>RESULTADOS DE SATISFACCIÓN</h2>
      <div class="d-flex flex-row text-left  mt-2" style="font-size: 12pt;"> Se muestran el porcentaje de la muestra que ha respondido bueno/muy bueno a las preguntas del cuestionario. </div>
      </div>
 
-     <div class="googleChartTitle col-md-4 text-center" >
+     <div class="googleChartTitle">
         <div id="chartSatisfaccion" class="column-chart"></div>
      </div>
 
@@ -296,7 +298,7 @@ background-color: #C0C0C0;
         PORCENTAJE DE PACIENTES QUE HAN RESPONDIDO BUENO Y MUY BUENO
     </div>
 
-    <div class="" style="font-size: 12pt;">
+    <div class="margin-bottom: 0; padding-bottom: 0;" style="font-size: 12pt;">
 
         @foreach ($preguntas as $pregunta)
             @foreach ($porcentPreg as $ppreg)
@@ -306,7 +308,7 @@ background-color: #C0C0C0;
                     {{$pregunta->question}}  <br>
                     <br>
                     @if ( $loop->iteration == 5 )
-                    <div class="googleChartTitle col-md-4 text-center" style="margin: 0;padding: 0;">
+                    <div class="googleChartTitle" style="margin: 0 auto;padding: 0;">
                     <div><strong>NPS: </strong>{{$totalSatisfaccion['nps']}}%</div>
                     <div id ="question5" class="bar-chart"></div>
                     </div>
@@ -315,11 +317,6 @@ background-color: #C0C0C0;
             @endforeach
         @endforeach
     </div>
-
-   
-
-
-
 </div>
 
 
@@ -338,6 +335,7 @@ background-color: #C0C0C0;
                 clearInterval(interval); 
                 var provincia = "{{$params['province_id'] }}";
                 console.log( provincia );
+                drawMonthsChar()
                 drawSexChar(); 
                 drawAgeChar();
                 
@@ -441,6 +439,41 @@ $(window).scroll(function(){
 
         var experienceChart = new google.visualization.PieChart(document.getElementById('chartExperiencia'));
         experienceChart.draw(data, options);
+    }
+
+    function drawMonthsChar() {
+        var monthsData = [];
+        var row = ["Year", "TOTAL", { role: "style" }, { role: 'annotation' } ];
+        monthsData.push(row);
+        @foreach ($totalEncuestas as $te)
+            var row = ["{{$te->mes}}", {{$te->total}}, "#1A73E8", {{$te->total}}];
+            monthsData.push(row);
+        @endforeach
+
+        var data = google.visualization.arrayToDataTable(monthsData);
+        var options = {
+            title: 'ENCUESTAS POR MES',
+            titleTextStyle: {bold:true, fontSize:20, margin:15},
+            width: 680,
+            height: 300,
+            // bar: {groupWidth: "95%"},
+            legend: {position:'bottom'},
+            vAxis: {
+                title: 'NÚMERO DE ENCUESTAS', 
+                minValue:0,
+                format: '0'
+
+            },
+            hAxis: {
+                textStyle : {
+                    fontSize : 10,
+                    minTextSpacing : 10
+                },
+            }
+                };
+
+        var monthsChart = new google.visualization.ColumnChart(document.getElementById('chartMonths'));
+        monthsChart.draw(data, options);
     }
 
     function drawAgeChar() {
@@ -665,8 +698,8 @@ function drawQuestionsChar() {
         var options = {
             title: 'SATISFACCIÓN',
             titleTextStyle: {bold:true, fontSize:20, margin:15},
-            width: 800,
-            height: 400,
+            width: 680,
+            height: 300,
             bar: {groupWidth: "70%"},
             legend: {position:'bottom'},
             vAxis: {

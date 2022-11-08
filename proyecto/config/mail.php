@@ -45,6 +45,19 @@ return [
             'auth_mode' => null,
         ],
 
+        'custom_smtp' => [
+            'transport' => env('MAIL_TRANSPORT', 'smtp'),
+            'host' => '',
+            'port' => '',
+            'from' => [
+               'address' => '',
+               'name' => '',
+            ],
+            'encryption' => '',
+            'username' => '',
+            'password' => '',
+            ],
+
         'ses' => [
             'transport' => 'ses',
         ],

@@ -1,0 +1,86 @@
+
+.material-icons {
+    font-family: 'Material Icons';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -moz-font-feature-settings: 'liga';
+    -moz-osx-font-smoothing: grayscale;
+    }
+/* these styles will animate bootstrap alerts. */
+.alert{
+    z-index: 99;
+    top: 60px;
+    left:500px;
+    min-width:24%;
+    position: fixed;
+    animation: slide 0.5s forwards;
+}
+
+.alert-timeout{
+    z-index: 99;
+    top: 10px;
+    /* left:450px; */
+    min-width:30%;
+    /* position: fixed; */
+    animation: slide 0.5s forwards;
+    /* width: 100%; */
+}
+
+@keyframes slide {
+    100% { top: 10px; }
+}
+@media screen and (max-width: 668px) {
+    .alert{ /* center the alert on small screens */
+        left: 10px;
+        right: 10px; 
+
+    }
+    .alert-timeout{ /* center the alert on small screens */
+        left: 10px;
+        right: 10px; 
+    }
+}
+
+
+.animacion {
+    /*position: absolute;*/
+
+animation-name: parpadeo;
+animation-duration: 2s;
+animation-timing-function: linear;
+animation-iteration-count: infinite;
+
+-webkit-animation-name:parpadeo;
+-webkit-animation-duration: 3s;
+-webkit-animation-timing-function: linear;
+-webkit-animation-iteration-count: infinite;
+}
+
+@-moz-keyframes parpadeo{  
+0% { opacity: 1.0; }
+50% { opacity: 0.0; }
+100% { opacity: 1.0; }
+}
+
+@-webkit-keyframes parpadeo {  
+0% { opacity: 1.0; }
+50% { opacity: 0.0; }
+100% { opacity: 1.0; }
+}
+
+@keyframes parpadeo {  
+0% { opacity: 1.0; }
+50% { opacity: 0.0; }
+100% { opacity: 1.0; }
+}
+
+
+    

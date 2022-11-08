@@ -51,7 +51,7 @@
             
             
             <script type="text/javascript">
-                $('div.alert').delay(2000).slideUp(300);
+                $('div.alert').delay(3500).slideUp(300);
 
                 $.MonthPicker = {
                     VERSION: '3.0.4', // Added in version 2.4;

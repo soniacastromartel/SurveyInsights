@@ -43,5 +43,26 @@ class AppServiceProvider extends ServiceProvider
             });
         }
 
+        view()->composer('*',function($view){
+            $nDays = '';
+            $currentDay = date('d');
+            $currentMonth = date('m');
+            $textMonths = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+            $month = $textMonths[$currentMonth-1]; 
+
+            if($month == "Marzo" || $month == "Diciembre"){
+                if($currentDay>=24){
+                    $nDays= env ('PARAM_ENDDAY1')- $currentDay;
+                }
+            }else if($month == "Junio" || $month == "Septiembre"){
+                if($currentDay>=23){
+                    $nDays= env ('PARAM_ENDDAY2')- $currentDay;
+                }
+            }
+
+            $view->with('nDays', $nDays >= 0 ? $nDays : '' );
+            $view->with('currentMonth', $currentMonth );
+        });
+
     }
 }
