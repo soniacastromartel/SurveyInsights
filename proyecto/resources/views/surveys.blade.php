@@ -130,7 +130,7 @@
                                 <span class="label">{{ __('Compañía') }}</span>
                                 <div class="dropdown bootstrap-select">
                                     <select class="selectpicker" name="company_id" id="company_id" data-size="7" data-style="btn btn-red-icot btn-round" title=" Seleccione Compañía" tabindex="-98">
-                                        <option value="-1">TODAS</option>
+                                        <option value="-1" selected>TODAS</option>
                                     </select>
                                     {{-- <input type="hidden" name="patient" id="patient"/> --}}
                                 </div>
@@ -285,7 +285,6 @@
             var action = $(document.activeElement).attr('formaction');
 
             console.log(params);
-            console.log($("#company_id option:selected").text());
 
             params["startDate"] = $("#startDatePicker").val();
             params["endDate"] = $("#endDatePicker").val();
@@ -293,9 +292,10 @@
             params["survey_id"] = $("#survey_id option:selected").val();
             params["patient_id"] = $("#patient_id option:selected").val();
             params["patient_name"]=$("#patient_id option:selected").text();
-            params["company"]=$("#company_id option:selected").text();
+            params["company"]=$("#company_id option:selected").val();
+            params["company_name"]=$("#company_id option:selected").text();
 
-            if (params["startDate"] == undefined || params["endDate"] == undefined) {
+            if (params["startDate"] == null || params["endDate"] == null) {
                 timeOutAlert($('#alertError'), 'DEBE SELECCIONAR FECHA DE INICIO Y FIN');
             }
 
@@ -475,7 +475,7 @@
         $("#survey_id").on('change', function(e) {
             $('select#provincia_id').val('-1');
             $('select#patient_id').val('-1');
-            $('select#company_id').val('-1');
+            $('.company_picker').hide();
             $('select#provincia_id').selectpicker("refresh");
             $('select#patient_id').selectpicker("refresh");
             $('select#company_id').selectpicker("refresh");
@@ -484,7 +484,9 @@
         });
 
         $("#patient_id").on('change', function(e) {
+            console.log($("#survey_id option:selected"));
              if($("#survey_id option:selected").val()!=285213){
+                $('select#company_id').val('-1');
 
                 var code = $(this).val();
             var param = {};
@@ -504,9 +506,9 @@
                         if (textStatus === 'success') {
                             $('.company_picker').show();
                             $("#company_id").empty();
-                            $("#company_id").append('<option value="-1">TODAS </option>');
+                            $("#company_id").append('<option value="-1" selected>TODAS </option>');
                             $.each(data, function(index, value) {
-                                $("#company_id").append('<option value="' + index + '">' + value + '</option>');
+                                $("#company_id").append('<option value="' + value.code + '">' + value.name + '</option>');
                             });
                             $('#company_id').selectpicker('refresh');
                         }

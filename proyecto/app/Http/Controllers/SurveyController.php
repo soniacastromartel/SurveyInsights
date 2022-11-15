@@ -22,6 +22,7 @@ class SurveyController extends BaseController
     protected $whereProvinciasLpa;
     protected $whereProvinciasTfe;
     protected $whereTipoPaciente;
+    protected $whereCompany;
     protected $preguntas;
 
     public function index()
@@ -34,8 +35,7 @@ class SurveyController extends BaseController
         //     "Servicio Canario de la Salud", "Laboral/Diversos", "Seguro Médico", "Accidente Tráfico", "Privado"
         // ];
 
-        $patientsType = $this->getPatientsTypeName
-();
+        $patientsType = $this->getPatientsTypeName();
         $servicesType = $this->getServices();
 
         return view('surveys', [
@@ -111,13 +111,14 @@ class SurveyController extends BaseController
         $this->icotSurvey = DB::connection('icotsurvey'); //Forzamos conexion con survey (datos encuestas)
         try {
             $company = $this->icotSurvey->select(
-                'select lime_answers.answer as name from  lime_answers where lime_answers.qid = ' . $params['code'] . ''
+                'select lime_answers.answer as name, lime_answers.code as code from  lime_answers where lime_answers.qid = ' . $params['code'] . ''
 
             );
-            foreach ($company as $c) {
-                $companyNames[] = $c->name;
-            }
-            return $companyNames;
+            // foreach ($company as $c) {
+            //     $companyNames[] = $c->name;
+            // }
+            // return $companyNames;
+            return $company;
         } catch (\Illuminate\Database\QueryException $e) {
             return response()->json([
                 'success' => 'false',
@@ -141,6 +142,9 @@ class SurveyController extends BaseController
                 $where .= " and " . $this->whereProvincias;
             } else {
                 $where .=  $this->whereProvincias;
+            }
+            if(!empty($this->whereCompany)){
+                $where .= " and " . $this->whereCompany;
             }
         } else if (empty($this->whereTipoPaciente) && empty($this->whereProvincias)) { // no, no
             $where .=  " ";
@@ -288,7 +292,7 @@ class SurveyController extends BaseController
             $totalSexo['Mujer'] = 0;
             if (!empty($totalSexos)) {
                 $totalSexo['Hombre'] = $totalSexos[0]->total;
-                $totalSexo['Mujer']  = $totalSexos[1]->total;
+                $totalSexo['Mujer']  = isset($totalSexos[1]) ? $totalSexos[1]->total : 0;
             }
             return $totalSexo;
         } catch (\Illuminate\Database\QueryException $e) {
@@ -344,18 +348,7 @@ class SurveyController extends BaseController
         }
     }
 
-    function queryCompanies ($where){
-        try {
 
-
-
-        } catch (\Illuminate\Database\QueryException $e) {
-            return response()->json([
-                'success' => 'false',
-                'errors'  => $e->getMessage(),
-            ], 400);
-        }
-    }
 
     /**
      * Obtener datos de servicios requeridos
@@ -412,9 +405,9 @@ class SurveyController extends BaseController
         $totalOtrosCentros = $this->icotSurvey->select(
             'select(select count(' . $this->surveyName . '.' . $surveyCode . $codelp[0] . ')
             from  ' .  $this->surveyName .
-                ' where ' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . '  between ? and ?)+(select count(' . $this->surveyName . '.' . $surveyCode . $codelp[1] . ')
+                ' where ' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . '  between ? and ?'.$whereCond.')+(select count(' . $this->surveyName . '.' . $surveyCode . $codelp[1] . ')
 from  ' .  $this->surveyName .
-                ' where ' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . '  between ? and ?)as otros',
+                ' where ' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . '  between ? and ?'.$whereCond.')as otros',
             $this->periodTime
         );
 
@@ -471,22 +464,20 @@ from  ' .  $this->surveyName .
                     ' group by 1',
                 $this->periodTime
             );
-    
+
             $totalExp['1º vez'] = 0;
             $totalExp['Ya ha estado'] = 0;
             if (!empty($totalExperiencia)) {
                 $totalExp['1º vez'] = $totalExperiencia[0]->total;
-                $totalExp['Ya ha estado']  = $totalExperiencia[1]->total;
+                $totalExp['Ya ha estado']  = isset($totalExperiencia[1]) ? $totalExperiencia[1]->total : 0;
             }
-            return $totalExp;       
-         } catch (\Illuminate\Database\QueryException $e) {
+            return $totalExp;
+        } catch (\Illuminate\Database\QueryException $e) {
             return response()->json([
                 'success' => 'false',
                 'errors'  => $e->getMessage(),
             ], 400);
         }
-
-        
     }
 
     /**
@@ -652,6 +643,30 @@ from  ' .  $this->surveyName .
         }
     }
 
+    function queryCompanies($params)
+    {
+        try {
+            if ($params['company'] != -1) {
+                if ($params['patient_id'] == 'T1') {
+                    $campoCompany = $this->fields[env('PARAM_TRA')]['name'];
+                }
+                if ($params['patient_id'] == 'T2') {
+                    $campoCompany = $this->fields[env('PARAM_SAL')]['name'];
+                }
+                if ($params['patient_id'] == 'T3') {
+                    $campoCompany = $this->fields[env('PARAM_DIV')]['name'];
+                }
+
+                $this->whereCompany = $this->surveyName . '.' . $campoCompany . ' = \'' . $params['company'] . '\'';
+            }
+        } catch (\Illuminate\Database\QueryException $e) {
+            return response()->json([
+                'success' => 'false',
+                'errors'  => $e->getMessage(),
+            ], 400);
+        }
+    }
+
     /**
      * Obtener cantidad de encuestas por mes
      * param $where (cláusula where)
@@ -708,7 +723,7 @@ from  ' .  $this->surveyName .
         }
         if ($provinceId == 'TODAS') {
             $totalEncuestados += isset($totalProvincia['Provincia de Las Palmas']) ? $totalProvincia['Provincia de Las Palmas']  : $totalEncuestados;
-            $totalEncuestados += isset($totalProvincia['Provincia de Tenerife']) ? $totalProvincia['Provincia de Tenerife']  : $totalEncuestados;
+            $totalEncuestados = isset($totalProvincia['Provincia de Tenerife']) ? $totalEncuestados + $totalProvincia['Provincia de Tenerife']  : $totalEncuestados;
         }
         if ($totalEncuestados == 0) {
             return response()->json([
@@ -806,6 +821,7 @@ from  ' .  $this->surveyName .
             $this->surveyName = 'lime_survey_' . $params['survey_id'];
             $this->fields = $this->getFieldsSurvey($surveyFields);
             $this->queryPatientType($params);
+            $this->queryCompanies($params);
 
             // Filtros que recibimos
             /**
@@ -815,13 +831,16 @@ from  ' .  $this->surveyName .
              * Tipo de paciente
              *
              */
-            $orgPeriod = $params['startDate'] . ' al ' . $params['endDate'];
             $params['startDate'] = str_replace('/', '-', $params['startDate']);
             $params['endDate'] = str_replace('/', '-', $params['endDate']);
             $params['startDate'] = date("Y-m-d", strtotime($params['startDate']));
             $params['endDate'] = date("Y-m-d", strtotime($params['endDate']));
-
             $this->periodTime = [$params['startDate'],  $params['endDate'], $params['startDate'],  $params['endDate']];
+
+            $params['startDate']=date("d M Y",strtotime($params['startDate']));
+            $params['endDate']=date("d M Y",strtotime($params['endDate']));
+            $orgPeriod = $params['startDate'] . ' al ' . $params['endDate'];
+
 
             //Parametros:
             // -- Provincia (C1 Tenerife / C2 Las Palmas)
@@ -852,7 +871,7 @@ from  ' .  $this->surveyName .
             $porcentPreg = $this->queryPercents($where, $params['survey_id']);
 
             $data = array(
-                'title'               => 'INFORME ENCUESTAS',
+                'title'               => 'INFORME ENCUESTAS DE SATISFACCION',
                 'period'              => $orgPeriod,
                 'totalProvincia'      => $totalProvincia,
                 'totalProvincias'      => $totalProvincias,
@@ -883,17 +902,17 @@ from  ' .  $this->surveyName .
 
     /**
      * Método que genera el PDF del informe
+     * @param Request $request
      */
     public function generatePDF(Request $request)
     {
         try {
             $datos = $this->getData($request);
             $render = view('preview_data', $datos)->render();
-            $renderCover = view('cover')->render();
+            $renderCover = view('cover', $datos)->render();
             $header = view()->make('header')->render();
 
             $pdf = new Pdf;
-            $pdf->addCover($renderCover);
             $pdf->setOptions([
                 'javascript-delay' => 7000,
                 'header-html' => $header,
@@ -901,13 +920,16 @@ from  ' .  $this->surveyName .
                 'header-line',
                 'footer-right'     => "[page]",
                 'footer-left'     => $datos['title'],
-                'footer-font-size' => 10,
+                'footer-font-size' => 8,
                 // 'footer-spacing' => 10,
                 'footer-line',
                 'margin-top' => 25,
                 'margin-bottom' => 15,
+                'margin-left' => 20,
+                'margin-right' => 15
 
             ]);
+            $pdf->addCover($renderCover);
             $pdf->addPage($render);
 
             return $pdf;
@@ -922,6 +944,7 @@ from  ' .  $this->surveyName .
 
     /**
      * Método desde el que se hace la descarga del informe
+     * @param Request $request
      */
 
     public function download(Request $request)

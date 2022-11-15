@@ -23,18 +23,15 @@
         .column-chart {
             width: 400px;
             height:350px;
-            /* margin-left: 40px; */
-        
-            /* margin: 0 auto; */
         }
         .bar-chart {
-            width: 700px;
+            width: 800px;
             height:400px;
-            margin-left: 40px;
+            /* margin: 0 auto; */
         }
         .googleChartTitle {
             font: bold 20px Arial;
-            /* text-align: center; */
+             text-align: center; 
             /* padding-left:20px; */
             text-transform: uppercase;
             margin-bottom:0px;
@@ -56,11 +53,11 @@
         }
 
         body {
-    margin:     0;
-    padding:    0;
-    /* width:      21cm;
-    height:     29.7cm; */
-}
+        margin:     0;
+        padding:    0;
+        /* width:      21cm;
+        height:     29.7cm; */
+        }
 
 
 /* Printable area */
@@ -107,12 +104,41 @@ background-color: #C0C0C0;
   border-bottom: 1px solid black;
   margin-bottom:15px;
 
+}
 
+.title{
+font-size: 22pt;
+font-weight: bold;
+text-align: center;
+text-transform: uppercase;
+background-color: #C0C0C0;
+  color: black;
+  border-top: 1px solid black;
+  border-bottom: 1px solid black;
+  margin-bottom:15px;
 }
 
 /* Salto de página */
 .page_break {
   page-break-before: always;
+}
+
+.centerLabel
+{
+    position: absolute;
+    left: 295px;
+    right: 1px;
+    top: 2px;
+    width: 400px;
+    line-height: 400px;
+    text-align: center;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 18px;
+}
+
+.donutCell
+{
+    position: relative;
 }
 
     </style>
@@ -123,6 +149,15 @@ background-color: #C0C0C0;
 <h1>{{$title}}</h1>
 
 <div class="">
+@if ( $params['company'] != '-1' )
+    <div class="title">
+    <strong>{{ $params['company_name']}}  </strong>
+</div>
+    <hr>
+            @endif
+
+  
+
     <div class="d-flex flex-row text-left mt-4 pregunta">
         ¿Cuándo?
     </div>
@@ -139,7 +174,9 @@ background-color: #C0C0C0;
         Pacientes
         @if ( $params['patient_id'] != '-1' )
             de {{ $params['patient_name'] }}
-           
+            @if ( $params['company'] != '-1' )
+            de {{ $params['company_name']}}
+            @endif
         @endif
         de los centros de rehabilitación de
         @if ( $params['province_id'] == 'TODAS' )
@@ -194,7 +231,7 @@ background-color: #C0C0C0;
 
     <!-- encuestas por mes -->
     <div class="googleChartTitle">
-        <div id="chartMonths" class="column-chart"></div>
+        <div id="chartMonths" class="column-chart" style="margin-left: 110px;margin-top:50px;"></div>
      </div>
 
 
@@ -220,16 +257,20 @@ background-color: #C0C0C0;
      </div>
 
      @if ( $params['province_id'] == 'TODAS')
+         @if ( isset($totalProvincia['Provincia de Las Palmas']) )
      <div>
             <div class="googleChartTitle">
             <div id="services_lpa" class="bar-chart"></div>
             </div>
         </div> 
+        @endif
+        @if ( isset($totalProvincia['Provincia de Tenerife']) )
             <div>
                 <div class="googleChartTitle">
                     <div id ="services_tfe" class="bar-chart"></div>
                 </div>
             </div>
+            @endif
 
        @elseif  ( $params['province_id'] == 'Las Palmas')
        <div>
@@ -245,23 +286,31 @@ background-color: #C0C0C0;
             </div>
        @endif
 
-
+    @if ( $params['province_id'] == 'TODAS')
      <div style="margin-top: 50px;margin-bottom: 50px;" class="page_break">
+     @else
+     <div style="margin-top: 50px;margin-bottom: 50px;">
+    @endif
+
      <h2>RESULTADOS POR CENTRO</h2>
      <div class="d-flex flex-row text-left  mt-2" style="font-size: 12pt;"> Se muestran los resultados obtenidos por centro. </div>
      </div>
  
     @if ( $params['province_id'] == 'TODAS')
+        @if ( isset($totalProvincia['Provincia de Las Palmas']) )
         <div>
             <div class="googleChartTitle">
                 <div id ="centres_lpa" class="bar-chart"></div>
             </div>
         </div>
+        @endif
+        @if ( isset($totalProvincia['Provincia de Tenerife']) )
         <div >
             <div class="googleChartTitle">
                 <div id ="centres_tfe" class="bar-chart"></div>
             </div>
         </div>
+        @endif
     @elseif ( $params['province_id'] == 'Las Palmas')
             <div>
                 <div class="googleChartTitle">
@@ -285,15 +334,16 @@ background-color: #C0C0C0;
     @endif
 
     
-     <div style="margin-top: 50px;margin-bottom: 40px;" class="page_break">
+     <div style="margin-top: 30px;margin-bottom: 30px;" class="page_break">
      <h2>RESULTADOS DE SATISFACCIÓN</h2>
-     <div class="d-flex flex-row text-left  mt-2" style="font-size: 12pt;"> Se muestran el porcentaje de la muestra que ha respondido bueno/muy bueno a las preguntas del cuestionario. </div>
-     </div>
+     <div class="d-flex flex-row text-left  mt-2" style="font-size: 12pt;">  </div>
+     <div class="donutCell">
+    <!-- <div><strong>NPS: </strong>{{$totalSatisfaccion['nps']}}  </div> -->
+    <div id ="question5" class="bar-chart" style="margin-left: 100px;"></div>
+    <div class="centerLabel"><strong>NPS = {{$totalSatisfaccion['nps']}}</strong></div>
+    </div>
 
-     <div class="googleChartTitle">
-        <div id="chartSatisfaccion" class="column-chart"></div>
-     </div>
-
+     </div>     
     <div class="d-flex flex-row text-center mt-2 pregunta">
         PORCENTAJE DE PACIENTES QUE HAN RESPONDIDO BUENO Y MUY BUENO
     </div>
@@ -308,14 +358,14 @@ background-color: #C0C0C0;
                     {{$pregunta->question}}  <br>
                     <br>
                     @if ( $loop->iteration == 5 )
-                    <div class="googleChartTitle" style="margin: 0 auto;padding: 0;">
-                    <div><strong>NPS: </strong>{{$totalSatisfaccion['nps']}}%</div>
-                    <div id ="question5" class="bar-chart"></div>
-                    </div>
+                  
                     @endif
                 @endif
             @endforeach
         @endforeach
+
+        <div id="chartSatisfaccion" class="googleChartTitle" style="margin-left: 100px;"></div>
+
     </div>
 </div>
 
@@ -340,15 +390,19 @@ background-color: #C0C0C0;
                 drawAgeChar();
                 
                 if (provincia  == 'Las Palmas' || provincia  == 'TODAS') {
-                drawCentreLPAChart();
-                drawServicesCharLPA();
+                    @if ( isset($totalProvincia['Provincia de Las Palmas']) )
+                        drawCentreLPAChart();
+                        drawServicesCharLPA();
+                    @endif
                 }
                 if (provincia  == 'Tenerife' ||provincia  == 'TODAS') {
+                @if ( isset($totalProvincia['Provincia de Tenerife']) )
                 drawCentreTFEChart();
                 drawServicesCharTF();
+                @endif
                 }
                
-                drawExperienceChar();
+                drawExperienceChart();
                 drawQuestionsChar();
                 drawNPSChart();
 
@@ -414,7 +468,7 @@ $(window).scroll(function(){
         sexoChart.draw(data, options);
     }
 
-    function drawExperienceChar() {
+    function drawExperienceChart() {
         var data = new google.visualization.DataTable();
         data.addColumn('string', 'Pizza');
         data.addColumn('number', 'Populartiy');
@@ -425,9 +479,9 @@ $(window).scroll(function(){
 
         var options = {
             title: 'EXPERIENCIA',
-            pieHole: 0.4,
-            width:500,
-            height:500,
+            pieHole: 0.46,
+            width:460,
+            height:460,
             titleTextStyle: {bold:true, fontSize:20},
             // sliceVisibilityThreshold: .2,
             legend: {position:'bottom'},
@@ -582,6 +636,12 @@ $(window).scroll(function(){
                             minTextSpacing : 10
                             },
                             format: '0'
+
+                            
+                        },
+                        hAxis: {
+                            format: '0'
+
                         }
                       ,legend: 'none',
                       chartArea : {
@@ -688,7 +748,7 @@ function drawQuestionsChar() {
         @foreach ($preguntas as $pregunta)
             @foreach ($porcentPreg as $ppreg)
                 @if ( $loop->iteration == $pregunta->pregunta )
-            var row = ["PREGUNTA {{$pregunta->pregunta}}", {{$ppreg}}, "#bc012e", {{$ppreg}} +'%'];
+            var row = ["P. {{$pregunta->pregunta}}", {{$ppreg}}, "#bc012e", {{$ppreg}} +'%'];
             questionData.push(row);
                 @endif
             @endforeach
@@ -698,9 +758,9 @@ function drawQuestionsChar() {
         var options = {
             title: 'SATISFACCIÓN',
             titleTextStyle: {bold:true, fontSize:20, margin:15},
-            width: 680,
-            height: 300,
-            bar: {groupWidth: "70%"},
+            width: 540,
+            height: 250,
+            // bar: {groupWidth: "70%"},
             legend: {position:'bottom'},
             vAxis: {
                 title: 'PORCENTAJE', 
@@ -725,35 +785,63 @@ function drawQuestionsChar() {
         questionChart.draw(data, options);
 }
 
-function drawNPSChart(data, options) {
-    var data = google.visualization.arrayToDataTable([
-        ['Genre', 
-        'Detractores', { role: 'annotation' },
-        'Pasivos', { role: 'annotation' },
-        'Promotores', { role: 'annotation' } ],
-        ['Enero-Junio', {{$totalSatisfaccion['detractores']}}, 'Detractores', {{$totalSatisfaccion['pasivos']}},'Pasivos', {{$totalSatisfaccion['promotores']}}, 'Promotores']
-      ]);
+// function drawNPSChart(data, options) {
+//     var data = google.visualization.arrayToDataTable([
+//         ['Genre', 
+//         'Detractores', { role: 'annotation' },
+//         'Pasivos', { role: 'annotation' },
+//         'Promotores', { role: 'annotation' } ],
+//         ['Enero-Junio', {{$totalSatisfaccion['detractores']}}, 'Detractores', {{$totalSatisfaccion['pasivos']}},'Pasivos', {{$totalSatisfaccion['promotores']}}, 'Promotores']
+//       ]);
 
-      var options_fullStacked = {
-          isStacked: 'percent',
-          height: 300,
-          width: 900,
-          legend: {position: 'bottom', maxLines: 3},
-          colors: ['#F5B7B1', '#FAD7A0','#ABEBC6'],
+//       var options_fullStacked = {
+//           isStacked: 'percent',
+//           height: 300,
+//           width: 900,
+//           legend: {position: 'bottom', maxLines: 3},
+//           colors: ['#F5B7B1', '#FAD7A0','#ABEBC6'],
 
-          vAxis: {
-            minValue: 0,
-            ticks: [0, .3, .6, .9, 1]
-          },
-          chartArea : {
-                        width: "65%", 
-                        height: "50%"
-                      }
-        };
+//           vAxis: {
+//             minValue: 0,
+//             ticks: [0, .3, .6, .9, 1]
+//           },
+//           chartArea : {
+//                         width: "65%", 
+//                         height: "50%"
+//                       }
+//         };
         
-        var question5Chart = new google.visualization.BarChart(document.getElementById('question5'));
-        question5Chart.draw(data, options_fullStacked);
-}
+//         var question5Chart = new google.visualization.BarChart(document.getElementById('question5'));
+//         question5Chart.draw(data, options_fullStacked);
+// }
+
+function drawNPSChart() {
+        var data = new google.visualization.DataTable();
+        data.addColumn('string', 'Pizza');
+        data.addColumn('number', 'Populartiy');
+        data.addRows([
+            ['Promotores', {{$totalSatisfaccion['promotores']}} ],
+            ['Pasivos', {{$totalSatisfaccion['pasivos']}} ], 
+            ['Detractores', {{$totalSatisfaccion['detractores']}} ]
+                ]);
+
+        var options = {
+            // title: 'NPS : {{$totalSatisfaccion['nps']}}',
+            pieHole: 0.48,
+            width:430,
+            height:430,
+            pieSliceTextStyle: {color:'black', bold:'true', fontSize:16},
+            // sliceVisibilityThreshold: .2,
+            legend: {position:'bottom'},
+            chartArea: { width: "75%",left:"5%"},
+            //  is3D: true, 
+            colors: ['#21CCAD', '#FAC559','#F86569']
+
+        };
+
+        var question5Chart = new google.visualization.PieChart(document.getElementById('question5'));
+        question5Chart.draw(data, options);
+    }
 
 
 
