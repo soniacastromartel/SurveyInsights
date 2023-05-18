@@ -8,12 +8,20 @@ use mikehaertl\wkhtmlto\Pdf;
 use mikehaertl\tmp\File;
 use Mail;
 use App\Mail\ReportDelivered;
-use PhpParser\Node\Stmt\TryCatch;
+use App\Models\LimeAnswer;
+use Illuminate\Support\Carbon;
+
+use App\Models\LimeSurvey;
+use App\Models\Params;
+use Exception;
+use Hamcrest\Arrays\IsArray;
+
 // use PDF;
 
 class SurveyController extends BaseController
 {
     protected $icotSurvey;
+    protected $encuestas;
     protected $surveyName;
     protected $periodTime;
     protected $totalEncuestados;
@@ -24,613 +32,60 @@ class SurveyController extends BaseController
     protected $whereTipoPaciente;
     protected $whereCompany;
     protected $preguntas;
+    protected $surveyCode = '891295X38X';
 
     public function index()
     {
-        $this->icotSurvey = DB::connection('icotsurvey');
-        $surveys = $this->icotSurvey->select('select sid, name
-                                    from lime_surveys
-                                    where expires is null and name is not null');
-        // $patientsType = [
-        //     "Servicio Canario de la Salud", "Laboral/Diversos", "Seguro Médico", "Accidente Tráfico", "Privado"
-        // ];
-
-        $patientsType = $this->getPatientsTypeName();
-        $servicesType = $this->getServices();
-
-        return view('surveys', [
-            'title'        => 'ENCUESTAS DE SATISFACCIÓN', 'provinces'    => ['Las Palmas', 'Tenerife'], 'surveys'      => $surveys, 'patientsType' => $patientsType, 'servicesType' => $servicesType
-        ]);
-    }
-
-    /**Function que coge parametros de la encuesta de icotSurvey 
-     * param $surveyFields (parámetros de la tabla 'params' de la base de datos local)
-     */
-    public function getFieldsSurvey($surveyFields)
-    {
-        $fields = [];
-        foreach ($surveyFields as $key => $sf) {
-            if (!empty($sf->type)) {
-                $fields[$sf->name][] = ['name' =>  $sf->field, 'type' => [$sf->type => $sf->value]];
-            } else {
-                $fields[$sf->name]   = ['name' =>  $sf->field];
-            }
-        }
-
-        return $fields;
-    }
-
-    /**
-     * Obtener nombres de los servicios
-     */
-    public function getServices()
-    {
         try {
-            $servicesNames = [];
-            $service = $this->icotSurvey->select(
-                'select lime_answers.answer as servicio from  lime_answers where lime_answers.qid = ' . '72'
+            // $campoTrafico = $this->fields[env('PARAM_TRA')][0]['field'];
+
+
+            $surveys = LimeSurvey::getLastSurvey();
+            $surveyFields = Params::getParams($surveys->sid);
+            $this->fields = $this->getFieldsSurvey($surveyFields);
+            $campoTrafico = $this->fields[env('PARAM_TRA')]['name'];
+            $campoDiverso = $this->fields[env('PARAM_DIV')]['name'];
+            $campoSalud = $this->fields[env('PARAM_SAL')]['name'];
+            $allCompanies = [$campoTrafico, $campoDiverso, $campoSalud];
+
+            $patientsType = LimeAnswer::getNames(env('PARAM_BUSINESSPLAN_QID'));
+            $servicesType = $this->queryServicesNames(env('PARAM_SERVICES_QID'));
+            $provinces = Params::getFields(env('PARAM_PROVINCE'));
+            $companies = $this->getAllCompanies($allCompanies);
+
+            foreach ($companies as $company) {
+                $code = $company['code'];
+            }
+
+            return view('surveys', [
+                'title'        => 'ESTADÍSTICAS ICOT',
+                'provinces'    => $provinces,
+                'surveys'      => $surveys,
+                'patientsType' => $patientsType,
+                'servicesType' => $servicesType,
+                'companies' => $companies,
+            ]);
+        } catch (Exception $e) {
+            return response()->json(
+                [
+                    'success' => 'false',
+                    'errors'  => $e->getMessage(),
+                ],
+                400
             );
-            foreach ($service as $s) {
-                $servicesNames[] = $s->servicio;
-            }
-            return $servicesNames;
-        } catch (\Illuminate\Database\QueryException $e) {
-            return response()->json([
-                'success' => 'false',
-                'errors'  => $e->getMessage(),
-            ], 400);
         }
-    }
-    /**
-     * Obtener nombres de los tipos de asistencia
-     */
-    public function getPatientsTypeName()
-    {
-        try {
-            $patientTypes = $this->icotSurvey->select(
-                'select lime_answers.answer as type, lime_answers.code as code from  lime_answers where lime_answers.qid = ' . '310'
-            );
-            return $patientTypes;
-        } catch (\Illuminate\Database\QueryException $e) {
-            return response()->json([
-                'success' => 'false',
-                'errors'  => $e->getMessage(),
-            ], 400);
-        }
-    }
-
-
-    /**
-     * Obtener nombres de las compañías
-     * param $request
-     */
-    public function getCompanies(Request $request)
-    {
-        $params = $request->all();
-        $companyNames = [];
-        $this->icotSurvey = DB::connection('icotsurvey'); //Forzamos conexion con survey (datos encuestas)
-        try {
-            $company = $this->icotSurvey->select(
-                'select lime_answers.answer as name, lime_answers.code as code from  lime_answers where lime_answers.qid = ' . $params['code'] . ''
-
-            );
-            // foreach ($company as $c) {
-            //     $companyNames[] = $c->name;
-            // }
-            // return $companyNames;
-            return $company;
-        } catch (\Illuminate\Database\QueryException $e) {
-            return response()->json([
-                'success' => 'false',
-                'errors'  => $e->getMessage(),
-            ], 400);
-        }
-    }
-
-    /**
-     * Obtener cláusula where dependiendo 
-     * de parámetros seleccionados en los 
-     * selectores
-     */
-    public function getWhere()
-    {
-        $where = '';
-
-        if (!empty($this->whereTipoPaciente) && !empty($this->whereProvincias)) { // si,si
-            $where .= " and " . $this->whereTipoPaciente;
-            if (strpos(substr($where, 0, 5), 'and') === false || strpos(substr($this->whereProvincias, 0, 5), 'and') === false) {
-                $where .= " and " . $this->whereProvincias;
-            } else {
-                $where .=  $this->whereProvincias;
-            }
-            if(!empty($this->whereCompany)){
-                $where .= " and " . $this->whereCompany;
-            }
-        } else if (empty($this->whereTipoPaciente) && empty($this->whereProvincias)) { // no, no
-            $where .=  " ";
-        }
-        // else if (!empty($this->whereTipoPaciente) && empty($this->whereProvincias)){//si,no
-        //     $where .= " and " . $this->whereTipoPaciente;
-        // }
-        else if (empty($this->whereTipoPaciente) && !empty($this->whereProvincias)) { //si,no
-            if (strpos(substr($where, 0, 5), 'and') === false && strpos(substr($this->whereProvincias, 0, 5), 'and') === false) {
-                $where .=  " and " . $this->whereProvincias;
-            }
-        }
-        // else {
-        //         $where .=  $this->whereProvincias;
-        //     }
-        //         }
-
-        //FIXME Se recogen si/si, no/no y faltaría si/no, no/si
-
-        return $where;
-    }
-
-    //TODO por implementar -> obtener total de encuestas por tipo de asistencia
-    function queryPatientsTypeTotal($where)
-    {
-        try {
-            // 'select ls.`891295X38X310` as tipo , count(ls.`891295X38X310`) as total from icotsurvey.lime_survey_891295 ls where ls.`891295X38X310`  is not null  group by ls.`891295X38X310`'
-        } catch (\Illuminate\Database\QueryException $e) {
-            return response()->json([
-                'success' => 'false',
-                'errors'  => $e->getMessage(),
-            ], 400);
-        }
-    }
-
-    function queryProvincias($params)
-    {
-        $campoProvincia = $this->fields[env('PARAM_PROVINCE')][0]['name'];
-        $campoCentroLpa = $this->fields[env('PARAM_CENTRE_LPA')][0]['name'];
-        $campoCentroTfe = $this->fields[env('PARAM_CENTRE_TFE')][0]['name'];
-        if ($params['province_id'] == 'Tenerife' || $params['province_id'] == 'Las Palmas') {
-            foreach ($this->fields[env('PARAM_PROVINCE')] as $pProv) {
-                foreach (array_keys($pProv['type']) as $prov) {
-                    if ($prov == $params['province_id']) {
-                        $this->whereProvincias =   $this->surveyName . '.'
-                            . $pProv['name']
-                            . ' = \'' . $pProv['type'][$prov] . '\'';
-
-                        if ($params['province_id'] == 'Las Palmas') {
-                            $this->whereProvincias .= " and " . $this->surveyName . '.' . $campoCentroLpa . ' is not null';
-                        }
-                        if ($params['province_id'] == 'Tenerife') {
-                            $this->whereProvincias .= " and " . $this->surveyName . '.' . $campoCentroTfe . ' is not null';
-                        }
-                    }
-                }
-            }
-        }
-        if ($this->surveyName == 'lime_survey_891295') {
-            $qid = substr($campoProvincia, -3);
-        } else {
-            $qid = substr($campoProvincia, -2);
-        }
-
-        $whereCond = $this->getWhere();
-
-        if ($params['province_id'] != 'TODAS') {
-
-            $totalProvincias = $this->icotSurvey->select(
-                'select distinct lime_answers.answer as provincia, count(lime_answers.answer) as total' .
-                    ' from ' . $this->surveyName .
-                    ' join lime_answers on lime_answers.code = ' . $this->surveyName . '.' . $campoProvincia . ' and lime_answers.qid = ' . $qid .
-                    ' where ' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ' between ? and ? '
-                    . $whereCond .
-                    ' group by 1',
-                $this->periodTime
-            );
-        } else {
-            $auxWhere = $this->whereProvincias;
-            $whereLpa = ' and ' . $this->surveyName . '.' . $campoCentroLpa . ' is not null';
-
-            $this->whereProvinciasLpa = $auxWhere . $whereLpa;
-
-            $this->whereProvincias = $auxWhere .  $this->whereProvinciasLpa;
-            $whereCond = $this->getWhere();
-
-            $totalProvinciasLpa = $this->icotSurvey->select(
-                'select distinct lime_answers.answer as provincia, count(lime_answers.answer) as total ' .
-                    'from ' . $this->surveyName .
-                    ' join lime_answers on lime_answers.code = ' . $this->surveyName . '.' . $campoProvincia . ' and lime_answers.qid  = ' . $qid .
-                    ' where ' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ' between ? and ? '
-                    . $whereCond .
-                    ' group by 1',
-                $this->periodTime
-            );
-
-
-            $whereTfe  = ' and ' . $this->surveyName . '.' . $campoCentroTfe . ' is not null';
-            $this->whereProvinciasTfe = $auxWhere . $whereTfe;
-            $this->whereProvincias = $auxWhere .  $this->whereProvinciasTfe;
-
-            $whereCond = $this->getWhere();
-            $totalProvinciasTfe = $this->icotSurvey->select(
-                'select distinct lime_answers.answer as provincia, count(lime_answers.answer) as total ' .
-                    'from ' . $this->surveyName .
-                    ' join lime_answers on lime_answers.code = ' . $this->surveyName . '.' . $campoProvincia . ' and lime_answers.qid  = ' . $qid .
-                    ' where ' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ' between ? and ? '
-                    . $whereCond .
-                    ' group by 1',
-                $this->periodTime
-            );
-
-            $this->whereProvincias =  $this->surveyName . '.' . $campoProvincia . ' is not null';
-
-            $totalProvincias[] = $totalProvinciasLpa;
-            $totalProvincias[] = $totalProvinciasTfe;
-        }
-        return $totalProvincias;
-    }
-
-    /**
-     * Obtener datos por género
-     * param $where (cláusula where)
-     */
-    function querySexos($where)
-    {
-        $whereCond = $where;
-        $campoSexo = $this->fields[env('PARAM_SEX')]['name'];
-        if ($this->surveyName == 'lime_survey_891295') {
-            $qid = substr($campoSexo, -3);
-        } else {
-            $qid = substr($campoSexo, -2);
-        }
-        try {
-            $totalSexos = $this->icotSurvey->select(
-                'select distinct lime_answers.answer as sexo, count(' . $this->surveyName . '.' . $campoSexo . ') as total ' .
-                    'from ' . $this->surveyName .
-                    ' join lime_answers on lime_answers.code = ' . $this->surveyName . '.' . $campoSexo . ' and lime_answers.qid = ' . $qid .
-                    ' where ' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ' between ? and ? '
-                    . $whereCond .
-                    ' group by 1',
-                $this->periodTime
-            );
-            $totalSexo['Hombre'] = 0;
-            $totalSexo['Mujer'] = 0;
-            if (!empty($totalSexos)) {
-                $totalSexo['Hombre'] = $totalSexos[0]->total;
-                $totalSexo['Mujer']  = isset($totalSexos[1]) ? $totalSexos[1]->total : 0;
-            }
-            return $totalSexo;
-        } catch (\Illuminate\Database\QueryException $e) {
-            return response()->json([
-                'success' => 'false',
-                'errors'  => $e->getMessage(),
-            ], 400);
-        }
-    }
-
-    /**
-     * Obtener datos de edad
-     * param $where (cláusula where)
-     */
-    function queryEdades($where)
-    {
-        $whereCond = $where;
-        $campoEdad = $this->fields[env('PARAM_AGE')]['name'];
-        if ($this->surveyName == 'lime_survey_891295') {
-            $qid = substr($campoEdad, -3);
-        } else {
-            $qid = substr($campoEdad, -2);
-        }
-
-        try {
-            $totalEdades = $this->icotSurvey->select(
-                'select distinct lime_answers.answer as edad, count(' . $this->surveyName . '.' . $campoEdad . ') as total
-                                                        from  ' .  $this->surveyName .
-                    '   join lime_answers on lime_answers.code = ' .   $this->surveyName . '.' . $campoEdad . ' and lime_answers.qid = ' . $qid .
-                    ' where ' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ' between ? and ? '
-                    . $whereCond .
-                    ' group by 1',
-                $this->periodTime
-            );
-
-            $tEdades = [];
-            foreach ($totalEdades as $toEdad) {
-                $colEdad = htmlentities($toEdad->edad);
-                if (strpos($toEdad->edad, '<') !== false) {
-                    $colEdad =  'menor de ' . substr($toEdad->edad, 1);
-                }
-                if (strpos($toEdad->edad, '>') !== false) {
-                    $colEdad =  'mayor de ' . substr($toEdad->edad, 1);
-                }
-                $tEdades[] = (object) ['edad' => $colEdad, 'total' => $toEdad->total];
-            }
-            return $tEdades;
-        } catch (\Illuminate\Database\QueryException $e) {
-            return response()->json([
-                'success' => 'false',
-                'errors'  => $e->getMessage(),
-            ], 400);
-        }
-    }
-
-
-
-    /**
-     * Obtener datos de servicios requeridos
-     * param $where (cláusula where)
-     */
-    function queryServicios($where)
-    {
-        $servicesType = $this->getServices();
-
-        if ($this->surveyName == 'lime_survey_891295') {
-            $surveyCode = '891295X38X';
-            $codetf = '309';
-            $codelp = ['314', '315', '316'];
-        } else {
-            $surveyCode = '285213X7X';
-            $codetf = '72';
-            $codelp = ['77', '78', '79'];
-        }
-
-        $whereCond = $where;
-        $totalServiciosTF = $this->icotSurvey->select(
-            'select distinct lime_answers.answer as servicio, count(' . $this->surveyName . '.' . $surveyCode . $codetf . ') as total
-                                                    from  ' .  $this->surveyName .
-                '   join lime_answers on lime_answers.code = ' .   $this->surveyName . '.' . $surveyCode . $codetf . ' and lime_answers.qid = ' . $codetf .
-                ' where ' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ' between ? and ?'  . $whereCond
-                . ' group by 1',
-            $this->periodTime
-        );
-
-
-        $totalServicesTF = [];
-        foreach ($servicesType as $service) {
-            $e = 0;
-            foreach ($totalServiciosTF as $tservice) {
-                if ($service == $tservice->servicio) {
-                    $e = 1;
-                    $totalServicesTF[] = (object) array('servicio' => $tservice->servicio, 'total' => $tservice->total);
-                }
-            }
-            if ($e == 0) {
-                $totalServicesTF[] = (object) array('servicio' => $service, 'total' => 0);
-            }
-        }
-
-        $totalServiciosLP = $this->icotSurvey->select(
-            'select distinct lime_answers.answer as servicio, count(' . $this->surveyName . '.' . $surveyCode . $codelp[2] . ') as total
-                                                    from  ' .  $this->surveyName .
-                '   join lime_answers on lime_answers.code = ' .   $this->surveyName . '.' . $surveyCode . $codelp[2] . ' and lime_answers.qid = ' . $codelp[2] .
-                ' where ' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ' between ? and ? '  . $whereCond
-                . ' group by 1',
-            $this->periodTime
-        );
-
-        $totalOtrosCentros = $this->icotSurvey->select(
-            'select(select count(' . $this->surveyName . '.' . $surveyCode . $codelp[0] . ')
-            from  ' .  $this->surveyName .
-                ' where ' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . '  between ? and ?'.$whereCond.')+(select count(' . $this->surveyName . '.' . $surveyCode . $codelp[1] . ')
-from  ' .  $this->surveyName .
-                ' where ' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . '  between ? and ?'.$whereCond.')as otros',
-            $this->periodTime
-        );
-
-
-        $totalServicesLP = [];
-        foreach ($servicesType as $service) {
-            $e = 0;
-            foreach ($totalServiciosLP as $tservice) {
-                if ($service == $tservice->servicio) {
-                    $e = 1;
-                    $totalServicesLP[] = (object) array('servicio' => $tservice->servicio, 'total' => $tservice->total);
-                }
-            }
-            if ($e == 0) {
-                $totalServicesLP[] = (object) array('servicio' => $service, 'total' => 0);
-            }
-        }
-
-        foreach ($totalServicesLP as $tservicelp) {
-            if ($tservicelp->servicio == 'Otros') {
-                $tservicelp->total +=  $totalOtrosCentros[0]->otros;
-            }
-        }
-
-        // $totalServicesLP[] = (object) array('servicio' => 'Otros', 'total' => $totalOtrosCentros[0]->otros);
-
-
-
-        return ['Tenerife' => $totalServicesTF, 'Las Palmas' => $totalServicesLP];
     }
 
 
     /**
-     * Obtener datos de antigüedad
-     * param $where (cláusula where)
-     */
-    function queryExperiencia($where)
-    {
-        $whereCond = $where;
-        $campoExperiencia = $this->fields[env('PARAM_EXPERIENCE')]['name'];
-        if ($this->surveyName == 'lime_survey_891295') {
-            $qid = substr($campoExperiencia, -3);
-        } else {
-            $qid = substr($campoExperiencia, -2);
-        }
-
-        try {
-            $totalExperiencia = $this->icotSurvey->select(
-                'select distinct lime_answers.answer as experiencia, count(' . $this->surveyName . '.' . $campoExperiencia . ') as total
-                                                                from  ' .  $this->surveyName .
-                    '   join lime_answers on lime_answers.code = ' .   $this->surveyName . '.' . $campoExperiencia . ' and lime_answers.qid = ' . $qid .
-                    ' where ' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ' between ? and ? '
-                    . $whereCond .
-                    ' group by 1',
-                $this->periodTime
-            );
-
-            $totalExp['1º vez'] = 0;
-            $totalExp['Ya ha estado'] = 0;
-            if (!empty($totalExperiencia)) {
-                $totalExp['1º vez'] = $totalExperiencia[0]->total;
-                $totalExp['Ya ha estado']  = isset($totalExperiencia[1]) ? $totalExperiencia[1]->total : 0;
-            }
-            return $totalExp;
-        } catch (\Illuminate\Database\QueryException $e) {
-            return response()->json([
-                'success' => 'false',
-                'errors'  => $e->getMessage(),
-            ], 400);
-        }
-    }
-
-    /**
-     * Obtener Net Promoter Score
-     * param $where (cláusula where)
-     */
-    function queryNetPromoterScore($where)
-    {
-        $whereCond = $where;
-        $respuestas = ['A3', 'A2', 'A1'];
-        $totalSatisfaccion['promotores'] = 0;
-        $totalSatisfaccion['pasivos'] = 0;
-        $totalSatisfaccion['detractores'] = 0;
-        $totalSatisfaccion['nps'] = 0;
-        $question = 'Q005';
-
-        if ($this->surveyName == 'lime_survey_891295') {
-            $surveyCode = '891295X39X313S';
-        } else {
-            $surveyCode = '285213X8X76S';
-        }
-
-        $promotores = $this->icotSurvey->select(
-            'select count(' . $this->surveyName . '.' . $surveyCode . $question . ') as promotores
-                                                            from  ' .  $this->surveyName .
-                ' where ' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ' between ? and ? '
-                . $whereCond .
-                ' and ' .  $surveyCode . $question . '="A5"',
-            $this->periodTime
-        );
-        $pasivos = $this->icotSurvey->select(
-            'select count(' . $this->surveyName . '.' .  $surveyCode . $question . ') as pasivos
-                from  ' .  $this->surveyName .
-                ' where ' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ' between ? and ? '
-                . $whereCond .
-                ' and ' .  $surveyCode . $question . '="A4"',
-            $this->periodTime
-        );
-
-        $detractores = 0;
-        foreach ($respuestas as $rp) {
-            $totaldetractores =  $this->icotSurvey->select(
-                'select count(' . $this->surveyName . '.' . $surveyCode . $question . ') as detractores
-                    from  ' .  $this->surveyName .
-                    ' where ' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ' between :date1 and :date2 '
-                    . $whereCond .
-                    ' and ' .  $surveyCode . $question . '= :respuesta',
-                ["date1" => $this->periodTime[0], "date2" => $this->periodTime[1], "respuesta" => $rp]
-            );
-
-            $detractores += $totaldetractores[0]->detractores;
-        }
-
-
-        $totalSatisfaccion['promotores'] = $promotores[0]->promotores;
-        $totalSatisfaccion['pasivos'] = $pasivos[0]->pasivos;
-        $totalSatisfaccion['detractores'] = $detractores;
-        $totalSatisfaccion['nps'] = round(($promotores[0]->promotores - $detractores) / ($promotores[0]->promotores + $pasivos[0]->pasivos + $detractores) * 100, 1);
-
-        return $totalSatisfaccion;
-    }
-
-    function queryCentros($where)
-    {
-        $campoCentroLpa = $this->fields[env('PARAM_CENTRE_LPA')][0]['name'];
-        if ($this->surveyName == 'lime_survey_891295') {
-            $qid = substr($campoCentroLpa, -3);
-        } else {
-            $qid = substr($campoCentroLpa, -2);
-        }
-
-        $centreLpa =  $this->icotSurvey->select('select distinct lime_answers.answer as centro
-                                                    from lime_answers
-                                                    where qid = ' . $qid);
-
-        $auxWhere = $this->whereProvincias;
-        $this->whereProvincias = $this->whereProvinciasLpa;
-        $whereCond = $where;
-        $totalCentreLpa = $this->icotSurvey->select(
-            "select lime_answers.answer as centro ,COUNT(" . $this->surveyName . '.' . $campoCentroLpa . ") as total
-                                                        from  " .  $this->surveyName .
-                " JOIN lime_answers on lime_answers.code = " . $this->surveyName . '.' . $campoCentroLpa . " and lime_answers.qid = " . $qid .
-                " where " .  $this->surveyName . "." . $this->fields[env('PARAM_DATE')]['name'] . " between ? and ? "
-                . $whereCond
-                . " group by 1",
-            $this->periodTime
-        );
-
-        $totalCentLpa = [];
-        foreach ($centreLpa as $cLpa) {
-            $e = 0;
-
-
-            foreach ($totalCentreLpa as $totCentLpa) {
-                if ($cLpa->centro ==  $totCentLpa->centro) {
-                    $e = 1;
-                    $totalCentLpa[] = (object) array('centro' => $totCentLpa->centro, 'total' => $totCentLpa->total);
-                }
-            }
-        }
-
-        $this->whereProvincias = $this->whereProvinciasTfe;
-        $whereCond = $where;
-        $campoCentroTfe = $this->fields[env('PARAM_CENTRE_TFE')][0]['name'];
-
-        if ($this->surveyName == 'lime_survey_891295') {
-            $qid = substr($campoCentroTfe, -3);
-        } else {
-            $qid = substr($campoCentroTfe, -2);
-        }
-
-        $centreTfe =  $this->icotSurvey->select('select distinct lime_answers.answer as centro
-                                    from lime_answers
-                                    where qid = ' . $qid);
-
-        $totalCentreTfe = $this->icotSurvey->select("select replace(lime_answers.answer, 'ICOT', '') as centro ,COUNT(" . $this->surveyName . '.' . $campoCentroTfe . ") as total
-                                        from  " .  $this->surveyName .
-            " LEFT JOIN lime_answers on lime_answers.code= " . $this->surveyName . '.' . $campoCentroTfe . " and lime_answers.qid= " . $qid .
-            " where " .  $this->surveyName . "." . $this->fields[env('PARAM_DATE')]['name'] . " between ? and ? "
-            . $whereCond .
-            " group by 1", $this->periodTime);
-
-        $totalServices = [];
-        foreach ($centreTfe as $service) {
-            $e = 0;
-            foreach ($totalCentreTfe as $totCenTfe) {
-                if ($service->centro == 'ICOT' . $totCenTfe->centro) {
-                    $e = 1;
-                    $totalServices[] = (object) array('centro' => 'ICOT' . $totCenTfe->centro, 'total' => $totCenTfe->total);
-                }
-            }
-            if ($e == 0) {
-                $totalServices[] = (object) array('centro' => $service->centro, 'total' => 0);
-            }
-        }
-        $this->whereProvincias = $auxWhere;
-        return ['Tenerife' => $totalServices, 'Las Palmas' => $totalCentLpa];
-    }
-
-    /**
-     * Obtener tipo de paciente/asistencia
+     * Obtener tipo de paciente/asistencia para claúsula where
      * param $params (parámetros de la Request)
      */
-    function queryPatientType($params)
+    function getPatientType($params)
     {
-
         $this->whereTipoPaciente = '';
         if ($params['patient_id'] != -1) {
             $campoTPaciente = $this->fields[env('PARAM_TYPECLIENT')][0]['name'];
-
-            // $this->whereTipoPaciente = 'and lime_answers.answer = \'' . $params['patient_id'] .'\' and ' .    $this->surveyName .'.'
-            // .$campoTPaciente
-            // . ' =  lime_answers.code';
             $valueTPaciente = '';
             foreach ($this->fields[env('PARAM_TYPECLIENT')] as $fieldTPaci) {
                 if (array_values($fieldTPaci['type'])[0] == $params['patient_id']) {
@@ -643,23 +98,79 @@ from  ' .  $this->surveyName .
         }
     }
 
-    function queryCompanies($params)
+    /**
+     * Obtener la línea el parámetro que filtra por linea de asistencia
+     */
+
+    function getCampoCompany($params)
+    {
+        if ($params['patient_id'] == 'T1') {
+            $campoCompany = $this->fields[env('PARAM_TRA')]['name'];
+        }
+        if ($params['patient_id'] == 'T2') {
+            $campoCompany = $this->fields[env('PARAM_SAL')]['name'];
+        }
+        if ($params['patient_id'] == 'T3') {
+            $campoCompany = $this->fields[env('PARAM_DIV')]['name'];
+        }
+        if ($params['patient_id'] == '-1' && $params['company'] != '-1') {
+            //Get the Qids depending on company_name
+            $codes = LimeAnswer::getQid($params['company_name']);
+            //Get the $campoCompany to filter the sql, joining the qids got previously with the surveyCode
+            foreach ($codes as $code) {
+                $campoCompany[] = [
+                    'column' => $this->surveyCode . $code->qid,
+                    'code' => $code->code
+                ];
+            }
+        }
+
+        return $campoCompany;
+    }
+
+    // function setCampoCompany($params)
+    // {
+    //     $input_string = $params['company'];
+    //     $prefixes = ['TRA', 'DIV', 'SAL'];
+    //     $prefix_value =$this-> check_string_prefix($input_string, $prefixes);
+
+    //     if ($prefix_value === 'TRA') {
+    //         $campoCompany = $this->fields[env('PARAM_TRA')]['name'];
+    //     } elseif ($prefix_value === 'DIV') {
+    //         $campoCompany = $this->fields[env('PARAM_DIV')]['name'];
+    //     } elseif ($prefix_value === 'SAL') {
+    //         $campoCompany = $this->fields[env('PARAM_SAL')]['name'];
+
+    //     }
+
+    //     return $campoCompany;
+    // }
+
+
+    /*Obtener compañía para claúsula Where
+    * param $params (parámetros de la Request)
+    */
+    function getCompanies($params)
     {
         try {
+            $this->whereCompany = '';
             if ($params['company'] != -1) {
-                if ($params['patient_id'] == 'T1') {
-                    $campoCompany = $this->fields[env('PARAM_TRA')]['name'];
-                }
-                if ($params['patient_id'] == 'T2') {
-                    $campoCompany = $this->fields[env('PARAM_SAL')]['name'];
-                }
-                if ($params['patient_id'] == 'T3') {
-                    $campoCompany = $this->fields[env('PARAM_DIV')]['name'];
-                }
+                $campoCompany = $this->getCampoCompany($params);
 
-                $this->whereCompany = $this->surveyName . '.' . $campoCompany . ' = \'' . $params['company'] . '\'';
+                if (is_array($campoCompany)) {
+                    foreach ($campoCompany as $company) {
+                        $where[] = $this->surveyName . '.' . $company['column'] . ' = \'' . $company['code'] . '\'';
+                    }
+
+                    if (is_array($where)) {
+                        $this->whereCompany = implode(' or ', $where);
+                        $this->whereCompany = '(' . $this->whereCompany . ')';
+                    }
+                } else {
+                    $this->whereCompany = $this->surveyName . '.' . $campoCompany . ' = \'' . $params['company'] . '\'';
+                }
             }
-        } catch (\Illuminate\Database\QueryException $e) {
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => 'false',
                 'errors'  => $e->getMessage(),
@@ -667,44 +178,61 @@ from  ' .  $this->surveyName .
         }
     }
 
-    /**
-     * Obtener cantidad de encuestas por mes
-     * param $where (cláusula where)
-     */
-    function querySurveyQuantity($where)
-    {
-        try {
-            $whereCond = $where;
 
-            $totalSurveys = $this->icotSurvey->select(
-                'select distinct month(' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ') as fecha, count(' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ') as total,
-                CASE 
-                when month(' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ') = 1 then "enero"
-                when month(' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ') = 2 then "febrero"
-                when month(' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ') = 3 then "marzo"
-                when month(' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ') = 4 then "abril"
-                when month(' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ') = 5 then "mayo"
-                when month(' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ') = 6 then "junio"
-                when month(' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ') = 7 then "juliio"
-                when month(' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ') = 8 then "agosto"
-                when month(' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ') = 9 then "septiembre"
-                when month(' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ') = 10 then "octubre"
-                when month(' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ') = 11 then "noviembre"
-                when month(' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ') = 12 then "diciembre"
-                end as mes
-                from  ' .  $this->surveyName .
-                    ' where ' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ' between ? and ? '
-                    . $whereCond .
-                    ' group by 1',
-                $this->periodTime
-            );
-            return $totalSurveys;
-        } catch (\Illuminate\Database\QueryException $e) {
-            return response()->json([
-                'success' => 'false',
-                'errors'  => $e->getMessage(),
-            ], 400);
+    /**Function que coge parametros de la encuesta de icotSurvey
+     * param $surveyFields (parámetros de la tabla 'params' de la base de datos local)
+     */
+    public function getFieldsSurvey($surveyFields)
+    {
+        $fields = [];
+        foreach ($surveyFields as $key => $sf) {
+            if (!empty($sf->type)) {
+                $fields[$sf->name][] = ['name' =>  $sf->field, 'type' => [$sf->type => $sf->value]];
+            } else {
+                $fields[$sf->name]   = ['name' =>  $sf->field];
+            }
         }
+        return $fields;
+    }
+
+    /**
+     * Obtener cláusula where dependiendo
+     * de parámetros seleccionados en los
+     * selectores
+     */
+    public function getWhere()
+    {
+        $where = '';
+
+        if (!empty($this->whereProvincias)) {
+            if (!empty($where)) {
+                $where .= " and ";
+            }
+            $where = $this->whereProvincias;
+        }
+        if (!empty($this->whereTipoPaciente)) {
+            if (!empty($where)) {
+                $where .= " and ";
+            }
+            $where .= $this->whereTipoPaciente;
+        }
+        if (!empty($this->whereCompany)) {
+            if (!empty($where)) {
+                $where .= " and ";
+            }
+            $where .= $this->whereCompany;
+        }
+
+        // $startsWithGroupOrLimit = (strpos($where, 'group') === 0 || strpos($where, 'limit') === 0);
+
+        // Add the 'and' condition based on whether $where starts with 'group' or 'limit'
+        // if (!empty($where) && !$startsWithGroupOrLimit) {
+        //     $where = " and " . $where;
+        // }
+
+        $where = $this->checkRepeatedWords($where, 'and and', ' and');
+
+        return $where;
     }
 
     /**
@@ -712,7 +240,7 @@ from  ' .  $this->surveyName .
      * param $provinceId (parámetro provinceId de la Request)
      * param $totalProvincia (total de encuestas por provincia)
      */
-    function queryEncuestados($provinceId, $totalProvincia)
+    function getEncuestados($provinceId, $totalProvincia)
     {
         $totalEncuestados = 0;
         if ($provinceId == 'Tenerife' && isset($totalProvincia['Provincia de Tenerife'])) {
@@ -736,6 +264,509 @@ from  ' .  $this->surveyName .
     }
 
 
+    //METODOS QUERY
+
+    /**
+     * Obtener nombres de los servicios
+     */
+    public function queryServicesNames($qid)
+    {
+        try {
+            $servicesNames = [];
+            $service = LimeAnswer::getNames($qid);
+
+            foreach ($service as $s) {
+                $servicesNames[] = $s->answer;
+            }
+            return $servicesNames;
+        } catch (\Illuminate\Database\QueryException $e) {
+            return response()->json([
+                'success' => 'false',
+                'errors'  => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+
+
+    /**
+     * Obtener nombres de las compañías
+     * param $request
+     */
+    public function queryCompaniesNames(Request $request)
+    {
+
+        $params = $request->all();
+        try {
+            foreach ($params as $param) {
+                $company[] = LimeAnswer::getNames($param)->toArray();
+            }
+            $companiesList = [];
+
+            foreach ($company as $eachCompany) {
+                foreach ($eachCompany as $each) {
+                    $companiesList[] = $each;
+                }
+            }
+            // $company = LimeAnswer::getNames($params['code']);
+            $companiesList = collect($companiesList)
+                ->unique('answer')
+                ->sortBy('answer')
+                ->values()
+                ->all();
+
+            return $companiesList;
+            // return $company;
+        } catch (\Illuminate\Database\QueryException $e) {
+            return response()->json([
+                'success' => 'false',
+                'errors'  => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * Obtener planes de asistencia y total de encuesta por plan
+     * params $where - cláusula where
+     * */
+    function queryCarePlan($where)
+    {
+
+        $campoTipoCliente = $this->surveyName . '.' . $this->fields[env('PARAM_TYPECLIENT')][0]['name'];
+        $qid = substr($campoTipoCliente, -3);
+        $alias = 'tipo';
+        try {
+            $totalCarePlans = LimeSurvey::getTotalResults($qid, $campoTipoCliente, $alias, $where, $this->periodTime);
+            return $totalCarePlans;
+        } catch (\Illuminate\Database\QueryException $e) {
+            return response()->json([
+                'success' => 'false',
+                'errors'  => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * Obterner nombre y total de las companías recogidas al seleccionar 'Otros' en el selector de companías
+     * */
+
+    function queryOtherCompanies($where)
+    {
+
+        $campoOtherCompanies = $this->surveyName . '.' . $this->fields[env('PARAM_OTR')]['name'];
+
+        try {
+            $otherCompanies= LimeSurvey::getOtherCompanies($campoOtherCompanies,$where, $this->periodTime);
+
+            return $otherCompanies;
+        } catch (\Illuminate\Database\QueryException $e) {
+            return response()->json([
+                'success' => 'false',
+                'errors'  => $e->getMessage(),
+            ], 400);
+        }
+
+        //select ls.`891295X38X326` as company,COUNT(ls.`891295X38X326`) as total from icotsurvey.lime_survey_891295 ls where ls.`891295X38X326` is not null group by 1;
+
+    }
+
+    /**
+     * Obtener las 10 compañias con más resultados filtrando por línea de negocios
+     * params $params parametros de la request
+     */
+    function queryCompaniesTotal($params, $where)
+    {
+        $isCompany = true;
+        $campoCompany = $this->getCampoCompany($params);
+        $alias = 'company';
+        $qid = substr($campoCompany, -3);
+        try {
+            $companiesTotal =  LimeSurvey::getTotalResults($qid, $campoCompany, $alias, $where, $this->periodTime, $isCompany);
+            return $companiesTotal;
+        } catch (\Illuminate\Database\QueryException $e) {
+            return response()->json([
+                'success' => 'false',
+                'errors'  => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+
+    function queryProvincias($params)
+    {
+        $campoProvincia = $this->fields[env('PARAM_PROVINCE')][0]['name'];
+        $campoCentroLpa = $this->fields[env('PARAM_CENTRE_LPA')][0]['name'];
+        $campoCentroTfe = $this->fields[env('PARAM_CENTRE_TFE')][0]['name'];
+
+        if ($params['province_name'] == 'Tenerife' || $params['province_name'] == 'Las Palmas') {
+            foreach ($this->fields[env('PARAM_PROVINCE')] as $pProv) {
+                foreach (array_keys($pProv['type']) as $prov) {
+                    if ($prov == $params['province_name']) {
+                        $this->whereProvincias =   $this->surveyName . '.'
+                            . $pProv['name']
+                            . ' = \'' . $pProv['type'][$prov] . '\'';
+
+                        if ($params['province_name'] == 'Las Palmas') {
+                            $this->whereProvincias .= " and " . $this->surveyName . '.' . $campoCentroLpa . ' is not null';
+                        }
+                        if ($params['province_name'] == 'Tenerife') {
+                            $this->whereProvincias .= " and " . $this->surveyName . '.' . $campoCentroTfe . ' is not null';
+                        }
+                    }
+                }
+            }
+        }
+
+        $qid = substr($campoProvincia, -3);
+        $alias = 'provincia';
+        $whereCond = $this->getWhere();
+
+        if ($params['province_name'] != 'TODAS') {
+
+            $totalProvincias = LimeSurvey::getTotalResults($qid, $campoProvincia, $alias, $whereCond, $this->periodTime);
+        } else {
+            $auxWhere = $this->whereProvincias;
+            $whereLpa = $this->surveyName . '.' . $campoCentroLpa . ' is not null';
+
+            $this->whereProvinciasLpa = $auxWhere . $whereLpa;
+
+            $this->whereProvincias = $auxWhere .  $this->whereProvinciasLpa;
+            $whereCond = $this->getWhere();
+
+            $totalProvinciasLpa = LimeSurvey::getTotalResults($qid, $campoProvincia, $alias, $whereCond,  $this->periodTime);
+
+            $whereTfe  = $this->surveyName . '.' . $campoCentroTfe . ' is not null';
+            $this->whereProvinciasTfe = $auxWhere . $whereTfe;
+            $this->whereProvincias = $auxWhere .  $this->whereProvinciasTfe;
+
+            $whereCond = $this->getWhere();
+
+            $totalProvinciasTfe = LimeSurvey::getTotalResults($qid, $campoProvincia, $alias, $whereCond,  $this->periodTime);
+
+            $this->whereProvincias =  $this->surveyName . '.' . $campoProvincia . ' is not null';
+
+            $totalProvincias[] = $totalProvinciasLpa;
+            $totalProvincias[] = $totalProvinciasTfe;
+        }
+        return $totalProvincias;
+    }
+
+    /**
+     * Obtener datos por género
+     * param $where (cláusula where)
+     */
+    function querySexos($where)
+    {
+
+        $alias = 'sexo';
+        $campoSexo = $this->fields[env('PARAM_SEX')]['name'];
+        $qid = substr($campoSexo, -3);
+
+        try {
+            $totalSexos = LimeSurvey::getTotalResults($qid, $campoSexo, $alias, $where,  $this->periodTime);
+            $totalSexo['Hombre'] = 0;
+            $totalSexo['Mujer'] = 0;
+            if (!empty($totalSexos)) {
+                $totalSexo['Hombre'] = $totalSexos[0]->total;
+                $totalSexo['Mujer']  = isset($totalSexos[1]) ? $totalSexos[1]->total : 0;
+            }
+            return $totalSexo;
+        } catch (\Illuminate\Database\QueryException $e) {
+            return response()->json([
+                'success' => 'false',
+                'errors'  => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * Obtener datos de edad
+     * param $where (cláusula where)
+     */
+    function queryEdades($where)
+    {
+        $alias = 'edad';
+        $campoEdad = $this->fields[env('PARAM_AGE')]['name'];
+        $qid = substr($campoEdad, -3);
+
+
+        try {
+            $totalEdades = LimeSurvey::getTotalResults($qid, $campoEdad, $alias, $where, $this->periodTime);
+
+            $tEdades = [];
+            foreach ($totalEdades as $toEdad) {
+                $colEdad = htmlentities($toEdad->edad);
+                if (strpos($toEdad->edad, '<') !== false) {
+                    $colEdad =  'menor de ' . substr($toEdad->edad, 1);
+                }
+                if (strpos($toEdad->edad, '>') !== false) {
+                    $colEdad =  'mayor de ' . substr($toEdad->edad, 1);
+                }
+                $tEdades[] = (object) ['edad' => $colEdad, 'total' => $toEdad->total];
+            }
+            return $tEdades;
+        } catch (\Illuminate\Database\QueryException $e) {
+            return response()->json([
+                'success' => 'false',
+                'errors'  => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * Obtener datos de servicios requeridos
+     * param $where (cláusula where)
+     */
+    function queryServices($where)
+    {
+        $alias = 'servicio';
+        $servicesType = $this->queryServicesNames(env('PARAM_SERVICES_QID'));
+        $surveyCode = '891295X38X';
+        $codetf = '309';
+        $codelp = ['314', '315', '316'];
+
+
+        $whereCond = $where;
+        $totalServiciosTF = LimeSurvey::getTotalResults($codetf, $surveyCode . $codetf, $alias, $whereCond,  $this->periodTime);
+
+        $totalServicesTF = [];
+        foreach ($servicesType as $service) {
+            $e = 0;
+            foreach ($totalServiciosTF as $tservice) {
+                if ($service == $tservice->servicio) {
+                    $e = 1;
+                    $totalServicesTF[] = (object) array('servicio' => $tservice->servicio, 'total' => $tservice->total);
+                }
+            }
+            if ($e == 0) {
+                $totalServicesTF[] = (object) array('servicio' => $service, 'total' => 0);
+            }
+        }
+        $totalServiciosLP = LimeSurvey::getTotalResults($codelp[2], $surveyCode . $codelp[2], $alias, $whereCond,  $this->periodTime);
+
+        $bindings = array_merge($this->periodTime, $this->periodTime);
+
+        $totalOtrosCentros = DB::select(
+            'select(' . LimeSurvey::getIntegerResults($surveyCode . $codelp[0], 'otros', $whereCond, $this->periodTime) . ') + (' . LimeSurvey::getIntegerResults($surveyCode . $codelp[1], 'otros', $whereCond, $this->periodTime) . ')as otros'
+        );
+
+
+        //         DB::select(
+        //             'select(select count(' . $this->surveyName . '.' . $surveyCode . $codelp[0] . ')
+        //             from  ' .  $this->surveyName .
+        //                 ' where ' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . '  between ? and ? ' . $whereCond . ')+(select count(' . $this->surveyName . '.' . $surveyCode . $codelp[1] . ')
+        // from  ' .  $this->surveyName .
+        //                 ' where ' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . '  between ? and ? ' . $whereCond . ')as otros',
+        //             $bindings
+        //         );
+
+        $totalServicesLP = [];
+        foreach ($servicesType as $service) {
+            $e = 0;
+            foreach ($totalServiciosLP as $tservice) {
+                if ($service == $tservice->servicio) {
+                    $e = 1;
+                    $totalServicesLP[] = (object) array('servicio' => $tservice->servicio, 'total' => $tservice->total);
+                }
+            }
+            if ($e == 0) {
+                $totalServicesLP[] = (object) array('servicio' => $service, 'total' => 0);
+            }
+        }
+        foreach ($totalServicesLP as $tservicelp) {
+            if ($tservicelp->servicio == 'Otros') {
+                $tservicelp->total +=  $totalOtrosCentros[0]->otros;
+            }
+        }
+
+        // $totalServicesLP[] = (object) array('servicio' => 'Otros', 'total' => $totalOtrosCentros[0]->otros);
+        return ['Tenerife' => $totalServicesTF, 'Las Palmas' => $totalServicesLP];
+    }
+
+
+    /**
+     * Obtener datos de antigüedad
+     * param $where (cláusula where)
+     */
+    function queryExperiencia($where)
+    {
+        $alias = 'experiencia';
+        $whereCond = $where;
+        $campoExperiencia = $this->fields[env('PARAM_EXPERIENCE')]['name'];
+        $qid = substr($campoExperiencia, -3);
+
+        try {
+            $totalExperiencia = LimeSurvey::getTotalResults($qid, $campoExperiencia, $alias, $whereCond, $this->periodTime);
+
+            $totalExp['1º vez'] = 0;
+            $totalExp['Ya ha estado'] = 0;
+            if (!empty($totalExperiencia)) {
+                $totalExp['1º vez'] = $totalExperiencia[0]->total;
+                $totalExp['Ya ha estado']  = isset($totalExperiencia[1]) ? $totalExperiencia[1]->total : 0;
+            }
+            return $totalExp;
+        } catch (\Illuminate\Database\QueryException $e) {
+            return response()->json([
+                'success' => 'false',
+                'errors'  => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * Obtener Net Promoter Score
+     * param $where (cláusula where)
+     */
+    function queryNetPromoterScore($where)
+    {
+        if (!empty($where)) {
+            $where = $where . ' and ';
+        }
+
+        $respuestas = ['A3', 'A2', 'A1'];
+        $totalSatisfaccion['promotores'] = 0;
+        $totalSatisfaccion['pasivos'] = 0;
+        $totalSatisfaccion['detractores'] = 0;
+        $totalSatisfaccion['nps'] = 0;
+        $question = '891295X39X313SQ005';
+
+        $whereCond = $where . $question . '="A5"';
+        $promotores = LimeSurvey::getResults($question, 'promotores', $whereCond, $this->periodTime);
+
+        $whereCond = $where . $question . '="A4"';
+        $pasivos = LimeSurvey::getResults($question, 'pasivos', $whereCond, $this->periodTime);
+
+        $detractores = 0;
+        foreach ($respuestas as $rp) {
+            $whereCond = $where  . $question . '="' . $rp . '"';
+            $totaldetractores =  LimeSurvey::getResults($question, 'detractores', $whereCond, $this->periodTime);
+            $detractores += $totaldetractores[0]->detractores;
+        }
+
+
+        
+        $promoters = ($promotores[0]->promotores * 100) / ($promotores[0]->promotores + $pasivos[0]->pasivos + $detractores);
+        if($promoters==0){
+            $promoters = ($pasivos[0]->pasivos * 100) / ($promotores[0]->promotores + $pasivos[0]->pasivos + $detractores);
+            $totalSatisfaccion['promotores'] =$pasivos[0]->pasivos;
+            $totalSatisfaccion['pasivos'] =0;
+
+
+        }else {
+            $totalSatisfaccion['promotores'] = $promotores[0]->promotores;
+            $totalSatisfaccion['pasivos'] = $pasivos[0]->pasivos;
+
+        }
+        $detractors = ($detractores * 100) / ($promotores[0]->promotores + $pasivos[0]->pasivos + $detractores);
+
+        $totalSatisfaccion['detractores'] = $detractores;
+        $totalSatisfaccion['nps'] = round($promoters - $detractors, 1);
+
+        return $totalSatisfaccion;
+    }
+
+
+    /**
+     * Resultados por centro
+     */
+    function queryCentros($where)
+    {
+        $alias = 'centro';
+        $campoCentroLpa = $this->fields[env('PARAM_CENTRE_LPA')][0]['name'];
+        $qid = substr($this->fields[env('PARAM_CENTRE_LPA')][0]['name'], -3);
+        $centreLpa = LimeAnswer::getNames($qid);
+
+        $auxWhere = $this->whereProvincias;
+        $this->whereProvincias = $this->whereProvinciasLpa;
+        $whereCond = $where;
+        $totalCentreLpa =  LimeSurvey::getTotalResults($qid, $campoCentroLpa, $alias, $whereCond, $this->periodTime);
+
+        $totalCentLpa = [];
+        foreach ($centreLpa as $cLpa) {
+            $e = 0;
+
+
+            foreach ($totalCentreLpa as $totCentLpa) {
+                if ($cLpa->answer ==  $totCentLpa->centro) {
+                    $e = 1;
+                    $totalCentLpa[] = (object) array('centro' => $totCentLpa->centro, 'total' => $totCentLpa->total);
+                }
+            }
+            if ($e == 0) {
+                $totalCentLpa[] = (object) array('centro' => $cLpa->answer, 'total' => 0);
+            }
+        }
+
+        $this->whereProvincias = $this->whereProvinciasTfe;
+        $whereCond = $where;
+        $campoCentroTfe = $this->fields[env('PARAM_CENTRE_TFE')][0]['name'];
+        $qid = substr($this->fields[env('PARAM_CENTRE_TFE')][0]['name'], -3);
+        $centreTfe = LimeAnswer::getNames($qid);
+
+        $totalCentreTfe = LimeSurvey::getTotalResults($qid, $campoCentroTfe, $alias, $whereCond,  $this->periodTime);
+
+
+        $totalServices = [];
+        foreach ($centreTfe as $service) {
+            $e = 0;
+            foreach ($totalCentreTfe as $totCenTfe) {
+                if ($service->answer == $totCenTfe->centro) {
+                    $e = 1;
+                    $totalServices[] = (object) array('centro' => $totCenTfe->centro, 'total' => $totCenTfe->total);
+                }
+            }
+            if ($e == 0) {
+                $totalServices[] = (object) array('centro' => $service->answer, 'total' => 0);
+            }
+        }
+        $this->whereProvincias = $auxWhere;
+        return ['Tenerife' => $totalServices, 'Las Palmas' => $totalCentLpa];
+    }
+
+
+    /**
+     * Obtener cantidad de encuestas por mes
+     * param $where (cláusula where)
+     */
+    function querySurveyQuantity($where = null)
+    {
+        try {
+            if (!empty($where)) {
+                $where = ' and ' . $where;
+            }
+
+            $totalSurveys = DB::select(
+                'select distinct month(' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ') as fecha, count(' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ') as total,
+                CASE
+                when month(' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ') = 1 then "enero"
+                when month(' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ') = 2 then "febrero"
+                when month(' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ') = 3 then "marzo"
+                when month(' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ') = 4 then "abril"
+                when month(' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ') = 5 then "mayo"
+                when month(' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ') = 6 then "junio"
+                when month(' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ') = 7 then "julio"
+                when month(' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ') = 8 then "agosto"
+                when month(' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ') = 9 then "septiembre"
+                when month(' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ') = 10 then "octubre"
+                when month(' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ') = 11 then "noviembre"
+                when month(' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ') = 12 then "diciembre"
+                END as mes
+                from  ' .  $this->surveyName .
+                    ' where ' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ' between ? and ? '
+                    . $where .
+                    ' group by month(' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . ')',
+                $this->periodTime
+            );
+            return $totalSurveys;
+        } catch (\Illuminate\Database\QueryException $e) {
+            return response()->json([
+                'success' => 'false',
+                'errors'  => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+
     /**
      * Obtener epígrafes de las preguntas
      * param $id (parámetro surveyId de la Request)
@@ -743,7 +774,7 @@ from  ' .  $this->surveyName .
     function queryPreguntas($id)
     {
         try {
-            $preguntas = $this->icotSurvey->select('select distinct concat( \'PREGUNTA\', \'  \', substr(q.title, 5, 1), \':\') AS n_pregunta, q.question,  substr(q.title, 5, 1) as pregunta
+            $preguntas = DB::select('select distinct concat( \'PREGUNTA\', \'  \', substr(q.title, 5, 1), \':\') AS n_pregunta, q.question,  substr(q.title, 5, 1) as pregunta
             from lime_questions q
             where q.title like \'SQ%\' and q.sid = ' . $id . '
             and q.title not like \'SQ006%\'
@@ -764,29 +795,31 @@ from  ' .  $this->surveyName .
      * param $where (cláusula where)
      * param $id (parámetro surveyId de la Request)
      */
-    function queryPercents($where, $id)
+    function queryPercents($where = null, $id, $preguntas)
     {
-        $preguntas = $this->queryPreguntas($id);
-        // $totalEncuestados= 
+        // $preguntas = $this->queryPreguntas($id);
+
+        if (!empty($where)) {
+            $where = ' and ' . $where;
+        }
 
         foreach ($preguntas as $pregunta) {
             $campoPregunta =   $this->fields[env('PARAM_QUESTION' . $pregunta->pregunta)]['name'];
+            $qid = substr($campoPregunta, 10, 3);
 
-            if ($this->surveyName == 'lime_survey_891295') {
-                $qid = substr($campoPregunta, 10, 3);
-            } else {
-                $qid = substr($campoPregunta, 9, 2);
-            }
-
-            $porcentPreg[$pregunta->pregunta] = $this->icotSurvey->select("select lime_answers.code, COUNT(lime_survey_" . $id . ".`" . $campoPregunta . "`) as total
+            $porcentPreg[$pregunta->pregunta] = DB::select("select lime_answers.code, COUNT(lime_survey_" . $id . ".`" . $campoPregunta . "`) as total
                 , COUNT(lime_survey_" . $id . ".`" . $campoPregunta . "`) * 100 /  " . $this->totalEncuestados . " as percent_total
                                     from lime_survey_" . $id . "
                                     JOIN lime_answers on lime_answers.code=lime_survey_" . $id . ".`" . $campoPregunta . "` and lime_answers.qid= " . $qid .
                 " where " .  $this->surveyName . "." . $this->fields[env('PARAM_DATE')]['name'] . " between ? and ?
-                                    and (lime_answers.code = 'A4' or lime_answers.code = 'A5')"
+                                    and (lime_answers.code = 'A4' or lime_answers.code = 'A5') "
                 . $where .
                 " group by 1", $this->periodTime);
         }
+
+
+
+
         foreach ($preguntas as $pregunta) {
             $total = 0;
             if (isset($porcentPreg[$pregunta->pregunta][0])) {
@@ -795,7 +828,13 @@ from  ' .  $this->surveyName .
             if (isset($porcentPreg[$pregunta->pregunta][1])) {
                 $total += $porcentPreg[$pregunta->pregunta][1]->percent_total;
             }
-            $porcentPreg[$pregunta->pregunta] = round($total, 1);
+            $total = round($total, 1);
+
+            if ($total > 100) {
+                $porcentPreg[$pregunta->pregunta] = 100;
+            } else {
+                $porcentPreg[$pregunta->pregunta] = $total;
+            }
         }
 
         return $porcentPreg;
@@ -813,15 +852,11 @@ from  ' .  $this->surveyName .
             /**
              * Obtener parametros según ID de encuesta
              */
-            $surveyFields = DB::select('select *
-                                        from params
-                                        where survey_id = ?', [$params['survey_id']]);
-
-            $this->icotSurvey = DB::connection('icotsurvey'); //Forzamos conexion con survey (datos encuestas)
+            $surveyFields = Params::getParams($params['survey_id']);
             $this->surveyName = 'lime_survey_' . $params['survey_id'];
             $this->fields = $this->getFieldsSurvey($surveyFields);
-            $this->queryPatientType($params);
-            $this->queryCompanies($params);
+            $this->getPatientType($params);
+            $this->getCompanies($params);
 
             // Filtros que recibimos
             /**
@@ -835,11 +870,14 @@ from  ' .  $this->surveyName .
             $params['endDate'] = str_replace('/', '-', $params['endDate']);
             $params['startDate'] = date("Y-m-d", strtotime($params['startDate']));
             $params['endDate'] = date("Y-m-d", strtotime($params['endDate']));
-            $this->periodTime = [$params['startDate'],  $params['endDate'], $params['startDate'],  $params['endDate']];
+            $this->periodTime = [$params['startDate'],  $params['endDate']];
 
-            $params['startDate']=date("d M Y",strtotime($params['startDate']));
-            $params['endDate']=date("d M Y",strtotime($params['endDate']));
-            $orgPeriod = $params['startDate'] . ' al ' . $params['endDate'];
+
+            $params['startDate'] = date("d M Y", strtotime($params['startDate']));
+            $params['endDate'] = date("d M Y", strtotime($params['endDate']));
+            $fechaInicio =  Carbon::parse($params['startDate'])->isoFormat('MMMM YYYY');
+            $fechaFin =  Carbon::parse($params['endDate'])->isoFormat('MMMM YYYY');
+            $orgPeriod = $fechaInicio . ' a ' . $fechaFin;
 
 
             //Parametros:
@@ -849,36 +887,49 @@ from  ' .  $this->surveyName .
             foreach ($totalProvincias as $tProv) {
                 if (is_array($tProv)) {
                     foreach ($tProv as $prov) {
-                        $totalProvincia[$prov->provincia] = $prov->total;
+                        if (isset($prov->provincia) && isset($prov->total)) {
+                            $totalProvincia[$prov->provincia] = $prov->total;
+                        }
                     }
-                } else {
+                } else  if (is_object($tProv) && isset($tProv->provincia) && isset($tProv->total)) {
                     $totalProvincia[$tProv->provincia] = $tProv->total;
+                } else if (isset($tProv[0]->provincia) && isset($tProv[0]->total)) {
+                    $totalProvincia[$tProv[0]->provincia] = $tProv[0]->total;
                 }
             }
 
-            $this->totalEncuestados = $this->queryEncuestados($params['province_id'],  $totalProvincia);
+            $this->totalEncuestados = $this->getEncuestados($params['province_name'],  $totalProvincia);
 
             $where = $this->getWhere();
+            // $where = $this ->checkRepeatedWords($whereCond, ' and and ', ' and');
 
             $totalSexos = $this->querySexos($where);
             $totalEdades = $this->queryEdades($where);
             $totalExperiencia = $this->queryExperiencia($where);
             $totalCentros = $this->queryCentros($where);
-            $totalServicios = $this->queryServicios($where);
+            $totalServicios = $this->queryServices($where);
             $totalSatisfaccion = $this->queryNetPromoterScore($where);
             $totalSurveys = $this->querySurveyQuantity($where);
             $preguntas = $this->queryPreguntas($params['survey_id']);
-            $porcentPreg = $this->queryPercents($where, $params['survey_id']);
+            $porcentPreg = $this->queryPercents($where, $params['survey_id'], $preguntas);
+            $tiposAsistencia = $this->queryCarePlan($where);
+
+            if ($params['patient_id'] == 'T1' || $params['patient_id'] == 'T2' || $params['patient_id'] == 'T3') {
+                $totalCompanies = $this->queryCompaniesTotal($params, $where);
+                $totalOtherCompanies = $this->queryOtherCompanies($where);
+            }
+
 
             $data = array(
                 'title'               => 'INFORME ENCUESTAS DE SATISFACCION',
                 'period'              => $orgPeriod,
                 'totalProvincia'      => $totalProvincia,
-                'totalProvincias'      => $totalProvincias,
+                'totalProvincias'     => $totalProvincias,
                 'totalSexo'           => $totalSexos,
                 'totalEdad'           => $totalEdades,
                 'totalExp'            => $totalExperiencia,
                 'totalSatisfaccion'   => $totalSatisfaccion,
+                'tiposAsistencia'     => $tiposAsistencia,
                 'totalServiciosTF'    => $totalServicios['Tenerife'],
                 'totalServiciosLPA'   => $totalServicios['Las Palmas'],
                 'preguntas'           => $preguntas,
@@ -887,9 +938,20 @@ from  ' .  $this->surveyName .
                 'totalCentreTfe'      => $totalCentros['Tenerife'],
                 'porcentPreg'         => $porcentPreg,
                 'totalEncuestados'    => $this->totalEncuestados,
-                'totalEncuestas'        => $totalSurveys
+                'totalEncuestas'      => $totalSurveys
+
 
             );
+            if (isset($totalCompanies)) {
+                $data['totalCompanies'] = $totalCompanies;
+            } else {
+                $data['totalCompanies'] = [];
+            }
+            if (isset($totalOtherCompanies)) {
+                $data['totalOtherCompanies'] = $totalOtherCompanies;
+            } else {
+                $data['totalOtherCompanies'] = [];
+            }
 
             return $data;
         } catch (\Illuminate\Database\QueryException $e) {
@@ -955,7 +1017,7 @@ from  ' .  $this->surveyName .
             if (!$pdf->saveAs($dataPDF)) {
                 $error = $pdf->getError();
                 return response()->json([
-                    'success' => false, 'mensaje' => '$error'
+                    'success' => false, 'mensaje' => $error
                 ], 404);
             } else {
                 $pdf->saveAs($dataPDF);
@@ -978,7 +1040,6 @@ from  ' .  $this->surveyName .
         try {
             $datos = $this->getData($request);
             $render = view('preview_data', $datos)->render();
-            // return view('preview_data', $datos);
             return $render;
         } catch (\Exception $e) {
             return response()->json([
@@ -1024,5 +1085,77 @@ from  ' .  $this->surveyName .
                 'errors'  => $e->getMessage(),
             ], 400);
         }
+    }
+
+    public function getAllCompanies($companies = [])
+    {
+        $allCompanies = [];
+        foreach ($companies as $company) {
+            $allCompanies[] = LimeAnswer::getAllCompanies($company)->toArray();
+        }
+
+        $companiesList = [];
+        foreach ($allCompanies as $i => $eachCompaniesGroup) {
+            foreach ($eachCompaniesGroup as $eachCompany) {
+                $companiesList[] = $eachCompany;
+            }
+        }
+
+        $companiesList = collect($companiesList)
+            ->unique('answer')
+            ->sortBy('answer')
+            ->values()
+            ->all();
+
+        return $companiesList;
+    }
+
+
+    /**
+     * Checks if there are repeated words inside a string
+     *
+     * @param $wordChain $string The string to check.
+     * @param  $repeated the chain of words you want to check for
+     * @param  $remove the word/chain of words you want to remove 
+     * @return string|null the new string
+     */
+    public function checkRepeatedWords($wordChain, $repeated, $remove)
+    {
+        $string = $wordChain;
+        $chain = $repeated;
+        $words = explode(' ', $chain); // convert the chain into an array of words
+        $containsChain = true; // assume the string contains the chain
+        foreach ($words as $word) {
+            if (!str_contains($string, $word)) {
+                $containsChain = false; // set flag to false if a word is not found
+                break;
+            }
+        }
+        if ($containsChain) {
+            // remove a word from the chain
+            $newChain = str_replace($remove, "", $chain);
+            $newString = str_replace($chain, $newChain, $string);
+            return $newString;
+        } else {
+            return $string;
+        }
+    }
+
+    /**
+     * Checks if a string starts with a certain prefix using strpos.
+     *
+     * @param string $string The string to check.
+     * @param array $prefixes The prefixes to check for.
+     * @return string|null The prefix that the string starts with, or null if it doesn't start with any of the prefixes.
+     */
+    function check_string_prefix($string, $prefixes)
+    {
+        foreach ($prefixes as $prefix) {
+            if (strpos($string, $prefix) === 0) {
+                return $prefix;
+            }
+        }
+
+        return null;
     }
 }

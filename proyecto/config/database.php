@@ -36,12 +36,23 @@ return [
     'connections' => [
 
         'icotsurvey' => [
+            'default' => env('DB_CONNECTION', 'mysql'),
             'driver' => 'mysql',
-            'host' => env('DB_HOST_SURVEY', ''),
-            'port' => env('DB_PORT_SURVEY',''),
-            'database' => env('DB_DATABASE_SURVEY',''),
-            'username' => env('DB_USERNAME_SURVEY',''),
-            'password' => env('DB_PASSWORD_SURVEY',''),
+            'host' => env('DB_HOST', ''),
+            'port' => env('DB_PORT',''),
+            'database' => env('DB_DATABASE',''),
+            'username' => env('DB_USERNAME',''),
+            'password' => env('DB_PASSWORD',''),
+
+        ],
+
+        'encuestas' => [
+            'driver' => 'mysql',
+            'host' => env('DB_HOST_ENCUESTAS', ''),
+            'port' => env('DB_PORT_ENCUESTAS',''),
+            'database' => env('DB_DATABASE_ENCUESTAS',''),
+            'username' => env('DB_USERNAME_ENCUESTAS',''),
+            'password' => env('DB_PASSWORD_ENCUESTAS',''),
 
         ],
 
@@ -68,7 +79,7 @@ return [
             'collation' => 'utf8mb4_unicode_ci',
             'prefix' => '',
             'prefix_indexes' => true,
-            'strict' => true,
+            'strict' => false,
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),

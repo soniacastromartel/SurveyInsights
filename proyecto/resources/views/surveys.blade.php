@@ -72,9 +72,7 @@
                                 <div class="dropdown bootstrap-select">
                                     <select class="selectpicker" name="survey_id" id="survey_id" data-size="7" data-style="btn btn-red-icot btn-round" title=" Seleccione Encuesta" tabindex="-98">
                                         <option value="-1">Seleccione Encuesta</option>
-                                        @foreach ($surveys as $survey)
-                                        <option value="{{$survey->sid}}">{{$survey->name}}</option>
-                                        @endforeach
+                                        <option value="{{$surveys->sid}}">{{$surveys->name}}</option>
                                     </select>
                                     {{-- <input type="hidden" name="survey" id="survey"/> --}}
                                 </div>
@@ -86,7 +84,7 @@
                                     <select class="selectpicker" name="provincia_id" id="provincia_id" data-size="7" data-style="btn btn-red-icot btn-round" title=" Seleccione Provincia" tabindex="-98">
                                         <option value="-1">TODAS</option>
                                         @foreach ($provinces as $province)
-                                        <option value="{{$province}}">{{$province}}</option>
+                                        <option value="{{$province->value}}">{{$province->type}}</option>
                                         @endforeach
                                     </select>
                                     {{-- <input type="hidden" name="province" id="province"/> --}}
@@ -99,7 +97,7 @@
                                     <select class="selectpicker" name="patient_id" id="patient_id" data-size="7" data-style="btn btn-red-icot btn-round" title=" Seleccione Tipo de Paciente" tabindex="-98">
                                         <option value="-1">TODOS</option>
                                         @foreach ($patientsType as $patient)
-                                        <option value="{{$patient->code}}">{{$patient->type}}</option>
+                                        <option value="{{$patient->code}}">{{$patient->answer}}</option>
                                         @endforeach
                                     </select>
                                     {{-- <input type="hidden" name="patient" id="patient"/> --}}
@@ -131,6 +129,9 @@
                                 <div class="dropdown bootstrap-select">
                                     <select class="selectpicker" name="company_id" id="company_id" data-size="7" data-style="btn btn-red-icot btn-round" title=" Seleccione Compañía" tabindex="-98">
                                         <option value="-1" selected>TODAS</option>
+                                        @foreach ($companies as $company)
+                                        <option value="{{$company['code']}}">{{$company['answer']}}</option>
+                                        @endforeach
                                     </select>
                                     {{-- <input type="hidden" name="patient" id="patient"/> --}}
                                 </div>
@@ -274,7 +275,9 @@
 <!-- TODO: Provincia -->
 <script type="text/javascript">
     $(function() {
-        $('.company_picker').hide();
+
+        setDate();
+        // $('.company_picker').hide();
 
         /** 
          * Obtenemos el elemento activo y en funcion del atributo 'formaction' vemos si se trata de descarga o preview y lanzamos la petición ajax correspondiente
@@ -288,7 +291,8 @@
 
             params["startDate"] = $("#startDatePicker").val();
             params["endDate"] = $("#endDatePicker").val();
-            params["province_id"] = $("#provincia_id option:selected").text();
+            params["province_id"] = $("#provincia_id option:selected").val();
+            params["province_name"] = $("#provincia_id option:selected").text();
             params["survey_id"] = $("#survey_id option:selected").val();
             params["patient_id"] = $("#patient_id option:selected").val();
             params["patient_name"]=$("#patient_id option:selected").text();
@@ -379,6 +383,7 @@
                     },
                     error: function(xhr, status, error) {
                         var response = JSON.parse(xhr.responseText);
+                        console.log(response);
                         timeOutAlert($('#alertError'), ' No hay datos que mostrar. Compruebe si hay datos incorrectos o faltan datos.');
 
                         $('#btnPreviewLoad').hide();
@@ -462,7 +467,7 @@
             $('select#company_id').selectpicker("refresh");
             $('input').val('');
             $("#contenedor").html("");
-            $('.company_picker').hide();
+            // $('.company_picker').hide();
 
 
         }
@@ -475,31 +480,41 @@
         $("#survey_id").on('change', function(e) {
             $('select#provincia_id').val('-1');
             $('select#patient_id').val('-1');
-            $('.company_picker').hide();
+            // $('.company_picker').hide();
             $('select#provincia_id').selectpicker("refresh");
             $('select#patient_id').selectpicker("refresh");
             $('select#company_id').selectpicker("refresh");
             $('input').val('');
-            $("#contenedor").html("");        
+            $("#contenedor").html("");  
+            setDate();
         });
 
         $("#patient_id").on('change', function(e) {
-            console.log($("#survey_id option:selected"));
              if($("#survey_id option:selected").val()!=285213){
                 $('select#company_id').val('-1');
 
                 var code = $(this).val();
+                console.log(code);
+
             var param = {};
-            if (code != -1 && code != 'T4' && code != 'T5') {
+            if (code != 'T4' && code != 'T5') {
                 if (code == 'T1') {
                     param["code"] = '323';
                 } else if (code == 'T2') {
                     param["code"] = '325';
                 } else if (code == 'T3') {
                     param["code"] = '324';
+                }else if (code == '-1'){
+                param["code1"] = '323';
+                param["code2"] = '324';
+                param["code3"] = '325';
                 }
-                $.ajax({
-                    url: '{{route("survey.getCompanies")}}',
+                
+               
+           
+
+            $.ajax({
+                    url: '{{route("survey.queryCompaniesNames")}}',
                     type: 'get',
                     data: param,
                     success: function(data, textStatus, jqXHR) {
@@ -508,7 +523,7 @@
                             $("#company_id").empty();
                             $("#company_id").append('<option value="-1" selected>TODAS </option>');
                             $.each(data, function(index, value) {
-                                $("#company_id").append('<option value="' + value.code + '">' + value.name + '</option>');
+                                $("#company_id").append('<option value="' + value.code + '">' + value.answer + '</option>');
                             });
                             $('#company_id').selectpicker('refresh');
                         }
@@ -522,10 +537,10 @@
                     var response = JSON.parse(jqXHR.responseText);
                     timeOutAlert($('#alertError'), response.message);
                 });
-            } else {
-                $('.company_picker').hide();
-            }
 
+            } else if (code != '-1') {
+                 $('.company_picker').hide();
+            }
 
              }
             
@@ -534,6 +549,23 @@
 
 
     });
+
+    function setDate() {
+        var date = new Date();
+        var day = date.getDate();
+        var month = date.getMonth() + 1;
+        var year = date.getFullYear();
+
+        day = day >= 10 ? day : '0' + day;
+        month = month >= 10 ? month : '0' + month;
+        var date = year + '-' + month + '-' + day;
+        console.log(date);
+
+        document.getElementById("startDatePicker").value = date;
+        document.getElementById("endDatePicker").value = date;
+
+    }
+
 
     function timeOutAlert($alert, $message) {
         $alert.text($message);

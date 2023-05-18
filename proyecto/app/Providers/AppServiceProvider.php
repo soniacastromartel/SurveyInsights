@@ -5,7 +5,7 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\DB;
-
+use Illuminate\Support\Carbon;
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -25,6 +25,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        Carbon::setLocale(config('app.locale'));
+        setlocale(LC_ALL,"es_ES");
+        
         if(env('APP_DEBUG')) {
             DB::listen(function($query) {
                 $bindings = array_map(function($value) {

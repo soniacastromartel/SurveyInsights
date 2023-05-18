@@ -7,8 +7,8 @@
 
     <!-- <script type="text/javascript" src="https://www.google.com/jsapi"></script> -->
 
-    <!-- <script src="https://www.google.com/jsapi"></script> -->
-    <script src="https://www.gstatic.com/charts/loader.js"></script>
+    <script src="https://www.google.com/jsapi"></script>
+    <!-- <script src="https://www.gstatic.com/charts/loader.js"></script> -->
     <link rel="stylesheet" href="{{ asset('css/bootstrap.min.css') }}" />
     <script src="{{asset('js/bootstrap.min.js') }}"></script>
     <style>
@@ -149,12 +149,16 @@ background-color: #C0C0C0;
 <h1>{{$title}}</h1>
 
 <div class="">
-@if ( $params['company'] != '-1' )
     <div class="title">
-    <strong>{{ $params['company_name']}}  </strong>
+    @if ( $params['company'] != '-1' && $params['company_name']!= 'Otros')
+    <strong>{{ $params['company_name']}}  </strong>        
+    @elseif ($params['company_name']== 'Otros')
+    <strong>OTRAS COMPANÍAS</strong>        
+
+    @endif
 </div>
     <hr>
-            @endif
+
 
   
 
@@ -174,15 +178,18 @@ background-color: #C0C0C0;
         Pacientes
         @if ( $params['patient_id'] != '-1' )
             de {{ $params['patient_name'] }}
-            @if ( $params['company'] != '-1' )
+            @if ( $params['company'] != '-1' && $params['company_name']!= 'Otros')
             de {{ $params['company_name']}}
             @endif
+            @if($params['company_name'] == 'Otros')
+            de Otras Compañías
+            @endif
         @endif
-        de los centros de rehabilitación de
-        @if ( $params['province_id'] == 'TODAS' )
+        de los Centros de Rehabilitación de
+        @if ( $params['province_name'] == 'TODAS' )
             Tenerife y Gran Canaria
         @else
-            @if ( $params['province_id'] == 'Las Palmas' )
+            @if ( $params['province_name'] == 'Las Palmas' )
                 Gran Canaria
             @else
                 Tenerife
@@ -213,7 +220,7 @@ background-color: #C0C0C0;
     </div>
     <div class="d-flex flex-row text-left" style="font-size: 12pt;">
         <strong> Por provincia: </strong> Se realizaron
-        @if ( $params['province_id'] == 'TODAS' )
+        @if ( $params['province_name'] == 'TODAS' )
             @if ( isset($totalProvincia['Provincia de Tenerife']) )
                 {{$totalProvincia['Provincia de Tenerife']}} en Tenerife.
             @endif
@@ -221,7 +228,7 @@ background-color: #C0C0C0;
                  {{$totalProvincia['Provincia de Las Palmas']}} en Gran Canaria.
             @endif
         @else
-            @if ( $params['province_id'] == 'Las Palmas' )
+            @if ( $params['province_name'] == 'Las Palmas' )
                 {{$totalProvincia['Provincia de Las Palmas']}} en Gran Canaria.
             @else
                 {{$totalProvincia['Provincia de Tenerife']}} en Tenerife.
@@ -256,7 +263,7 @@ background-color: #C0C0C0;
      <div class="d-flex flex-row text-left  mt-2" style="font-size: 12pt;"> Se muestran los resultados obtenidos en cuanto a servicios solicitados. </div>
      </div>
 
-     @if ( $params['province_id'] == 'TODAS')
+     @if ( $params['province_name'] == 'TODAS')
          @if ( isset($totalProvincia['Provincia de Las Palmas']) )
      <div>
             <div class="googleChartTitle">
@@ -272,7 +279,7 @@ background-color: #C0C0C0;
             </div>
             @endif
 
-       @elseif  ( $params['province_id'] == 'Las Palmas')
+       @elseif  ( $params['province_name'] == 'Las Palmas')
        <div>
             <div class="googleChartTitle">
             <div id="services_lpa" class="bar-chart"></div>
@@ -286,17 +293,17 @@ background-color: #C0C0C0;
             </div>
        @endif
 
-    @if ( $params['province_id'] == 'TODAS')
+    @if ( $params['province_name'] == 'TODAS')
      <div style="margin-top: 50px;margin-bottom: 50px;" class="page_break">
      @else
      <div style="margin-top: 50px;margin-bottom: 50px;">
     @endif
 
-     <h2>RESULTADOS POR CENTRO</h2>
+     <h2>RESULTADOS POR CENTROS</h2>
      <div class="d-flex flex-row text-left  mt-2" style="font-size: 12pt;"> Se muestran los resultados obtenidos por centro. </div>
      </div>
  
-    @if ( $params['province_id'] == 'TODAS')
+    @if ( $params['province_name'] == 'TODAS')
         @if ( isset($totalProvincia['Provincia de Las Palmas']) )
         <div>
             <div class="googleChartTitle">
@@ -311,37 +318,75 @@ background-color: #C0C0C0;
             </div>
         </div>
         @endif
-    @elseif ( $params['province_id'] == 'Las Palmas')
+    @elseif ( $params['province_name'] == 'Las Palmas')
             <div>
                 <div class="googleChartTitle">
                     <div id ="centres_lpa" class="bar-chart"></div>
                 </div>
             </div>
     @else
-            <di>
+            <div>
                 <div class="googleChartTitle">
                     <div id ="centres_tfe" class="bar-chart"></div>
                 </div>
             </div>
         
     @endif
+
+
   
 
-    @if ( $params['patient_id'] != '-1' )
-    <div class="d-flex flex-row text-left mt-2 text-center pregunta" style="margin-top:100px"> 
-    <!-- {{ $params['patient_name'] }} -->
-    </div>     
+    @unless ($params['patient_id'] != '-1')
+    <div class="d-flex flex-row text-left mt-2 text-center pregunta" style="margin-top:100px"></div>     
+        <div style="margin-top: 60px;margin-bottom: 60px;" class="page_break">
+            <h2>RESULTADOS POR PLANES DE ASISTENCIA</h2>
+            <div class="d-flex flex-row text-left  mt-2" style="font-size: 12pt;"> Se muestran los resultados obtenidos por plan de asistencia. </div>   
+            <div id="plansChart" class="googleChartTitle" style="margin-left: 100px;"> </div>
+        </div>
+@endunless
+
+
+   
+    @if ($params['patient_id'] != '-1')
+    @if ($params['patient_id'] == 'T1' || $params['patient_id'] == 'T2' || $params['patient_id'] == 'T3')
+        @if ($params['company'] == '-1')                      
+            @if (isset($totalCompanies))
+            <div class="d-flex flex-row text-left mt-2 text-center pregunta" style="margin-top:100px"></div> 
+                    <div style="margin-top: 60px;margin-bottom: 60px;" class="page_break">
+                        <h2>RESULTADOS POR COMPAÑÍA</h2>
+                        <div class="d-flex flex-row text-left  mt-2" style="font-size: 12pt;"> Se muestran las compañías con mayor número de pacientes encuestados. </div>   
+                        <div id="companiesChart" class="googleChartTitle bar-chart" style="margin-left: 100px;"></div>
+                
+            @endif
+        @endif
+        @if (($params['company'] == 'SAL25')||($params['company'] == 'TRA40')||($params['company'] == 'DIV32'))
+            @if (isset($totalOtherCompanies))
+            <div class="d-flex flex-row text-left mt-2 text-center pregunta" style="margin-top:100px"></div> 
+                    <div style="margin-top: 60px;margin-bottom: 60px;" class="page_break">
+                        <h2>RESULTADOS PARA OTRAS COMPAÑÍAS</h2>
+            <div class="d-flex flex-row text-left  mt-2" style="font-size: 12pt;"> Se muestran las compañías de los pacientes que han seleccionado la opción 'otros'. </div>   
+            <div id="otherCompaniesChart" class="googleChartTitle bar-chart" style="margin-left: 100px;"></div>
+            @endif
+            </div>
+        @endif
+
+    @endif
     @endif
 
-    
-     <div style="margin-top: 30px;margin-bottom: 30px;" class="page_break">
-     <h2>RESULTADOS DE SATISFACCIÓN</h2>
-     <div class="d-flex flex-row text-left  mt-2" style="font-size: 12pt;">  </div>
+    <div style="margin-top: 50px;margin-bottom: 50px;">
+     <h2>NET PROMOTER SCORE</h2>
+     <div class="d-flex flex-row text-left  mt-2" style="font-size: 12pt;"> Se muestran los resultados del Net Promoter Score. </div>
+     </div>
      <div class="donutCell">
-    <!-- <div><strong>NPS: </strong>{{$totalSatisfaccion['nps']}}  </div> -->
     <div id ="question5" class="bar-chart" style="margin-left: 100px;"></div>
     <div class="centerLabel"><strong>NPS = {{$totalSatisfaccion['nps']}}</strong></div>
     </div>
+
+    
+     <div style="margin-top: 60px;margin-bottom: 30px;" class="page_break">
+     <h2>RESULTADOS DE SATISFACCIÓN</h2>
+     <div class="d-flex flex-row text-left  mt-2" style="font-size: 12pt;">  </div>
+     
 
      </div>     
     <div class="d-flex flex-row text-center mt-2 pregunta">
@@ -367,15 +412,20 @@ background-color: #C0C0C0;
         <div id="chartSatisfaccion" class="googleChartTitle" style="margin-left: 100px;"></div>
 
     </div>
+
 </div>
-
-
-
 
 
 <script type="text/javascript">
     var GC= '#bc012e';
     var TF= '#1A73E8';
+    var colors = ['#AAFFAA', '#BBFFAA', '#CCFFAA', '#DDFFAA', '#EEFFAA', '#FFFFAA', '#FFDDAA', '#FFCCAA', '#FFBBAA', '#FFAAAA'];
+    var colours = ['#FF7F50', '#FFD700', '#00FFFF', '#FFA500',  '#EE82EE'];
+    var mycolors = [ '#C9C365','#21CCAD', '#FAC559','#F86569', '#8197AF', '#B1A9B1'];
+
+    console.log("{{$params['patient_id']}}");
+    console.log("{{$params['company']}}");
+    $totalCompanies= '';
 
     // window.onload = function() {
 
@@ -383,8 +433,11 @@ background-color: #C0C0C0;
         var interval = setInterval(function() { 
             if ( google.visualization !== undefined && google.visualization.DataTable !== undefined && google.visualization.PieChart !== undefined ){ 
                 clearInterval(interval); 
-                var provincia = "{{$params['province_id'] }}";
-                console.log( provincia );
+                var provincia = "{{$params['province_name'] }}";
+                var patient = "{{$params['patient_id']}}";
+                var encuesta = "{{$params['survey_id']}}";
+                var company = "{{$params['company']}}";
+
                 drawMonthsChar()
                 drawSexChar(); 
                 drawAgeChar();
@@ -393,18 +446,35 @@ background-color: #C0C0C0;
                     @if ( isset($totalProvincia['Provincia de Las Palmas']) )
                         drawCentreLPAChart();
                         drawServicesCharLPA();
+
                     @endif
                 }
-                if (provincia  == 'Tenerife' ||provincia  == 'TODAS') {
+                if (provincia  == 'Tenerife' || provincia  == 'TODAS') {
                 @if ( isset($totalProvincia['Provincia de Tenerife']) )
                 drawCentreTFEChart();
                 drawServicesCharTF();
                 @endif
                 }
+
+                
                
                 drawExperienceChart();
-                drawQuestionsChar();
+                drawQuestionsChart();
                 drawNPSChart();
+
+                if (patient == 'T1' || patient == 'T2' || patient == 'T3') {
+                    @if ($params['company'] == '-1')
+                        drawCompaniesTotal();
+                    @endif
+                    @if (($params['company'] == 'SAL25')||($params['company'] == 'TRA40')||($params['company'] == 'DIV32'))
+                        drawOtherCompanies();
+                    @endif
+                } else if ((patient == '-1' && company == '-1')|| (patient == '-1' && company != '-1')) {
+                    drawCarePlansChart();
+                }
+                
+                // drawCompaniesTotal();
+                // drawCarePlansChart();
 
                 window.status = 'ready'; 
             } }, 100);
@@ -443,7 +513,9 @@ $(window).scroll(function(){
 });
 
  
-
+/**
+ * Gráfica de Género
+ */
     function drawSexChar() {
         var data = new google.visualization.DataTable();
         data.addColumn('string', 'Pizza');
@@ -468,6 +540,9 @@ $(window).scroll(function(){
         sexoChart.draw(data, options);
     }
 
+    /**
+    * Gráfica de Antigüedad de pacientes
+    */
     function drawExperienceChart() {
         var data = new google.visualization.DataTable();
         data.addColumn('string', 'Pizza');
@@ -495,6 +570,9 @@ $(window).scroll(function(){
         experienceChart.draw(data, options);
     }
 
+    /**
+    * Gráfica de Encuestas/Mes
+    */
     function drawMonthsChar() {
         var monthsData = [];
         var row = ["Year", "TOTAL", { role: "style" }, { role: 'annotation' } ];
@@ -526,10 +604,13 @@ $(window).scroll(function(){
             }
                 };
 
-        var monthsChart = new google.visualization.ColumnChart(document.getElementById('chartMonths'));
+        var monthsChart = new google.visualization.LineChart(document.getElementById('chartMonths'));
         monthsChart.draw(data, options);
     }
 
+    /**
+    * Gráfica de Edades pacientes
+    */
     function drawAgeChar() {
         var edadData = [];
         var row = ["Year", "EDAD", { role: "style" }, { role: 'annotation' } ];
@@ -563,6 +644,9 @@ $(window).scroll(function(){
         edadChart.draw(data, options);
     }
 
+    /**
+    * Gráfica de Servicios LPA
+    */
     function drawServicesCharLPA() {
         var serviceData = [];
         var row = ["Servicio", "SERVICIO", { role: "style" }, { role: 'annotation' }  ];
@@ -576,7 +660,8 @@ $(window).scroll(function(){
             serviceData.push(row);
         @endforeach
 
-        var data = google.visualization.arrayToDataTable(serviceData);
+        var dataTable = google.visualization.arrayToDataTable(serviceData);
+        dataTable.sort([{column: 1, desc: true}]);
 
         var options = {
             title: 'SERVICIOS GRAN CANARIA',
@@ -593,6 +678,10 @@ $(window).scroll(function(){
                             minTextSpacing : 10
                             },
                             format: '0'
+                        },
+                        hAxis: {
+                            // format: '0'
+
                         }
                       ,legend: 'none',
                       chartArea : {
@@ -603,9 +692,12 @@ $(window).scroll(function(){
          };
 
         var serviceChart = new google.visualization.BarChart(document.getElementById('services_lpa'));
-        serviceChart.draw(data, options);
+        serviceChart.draw(dataTable, options);
     }
 
+    /**
+    * Gráfica de Servicios TF
+    */
     function drawServicesCharTF() {
         var serviceData = [];
         var row = ["Servicio", "SERVICIOS", { role: 'annotation' }  ];
@@ -619,7 +711,8 @@ $(window).scroll(function(){
         @endforeach
 
 
-        var data = google.visualization.arrayToDataTable(serviceData);
+        var dataTable = google.visualization.arrayToDataTable(serviceData);
+        dataTable.sort([{column: 1, desc: true}]);
 
         var options = {
             title: 'SERVICIOS TENERIFE',
@@ -640,7 +733,7 @@ $(window).scroll(function(){
                             
                         },
                         hAxis: {
-                            format: '0'
+                            // format: '0'
 
                         }
                       ,legend: 'none',
@@ -653,21 +746,27 @@ $(window).scroll(function(){
         };
 
         var serviceChart = new google.visualization.BarChart(document.getElementById('services_tfe'));
-        serviceChart.draw(data, options);
+        serviceChart.draw(dataTable, options);
     }
 
+    /**
+    * Gráfica de Centros LPA
+    */
     function drawCentreLPAChart() {
         var centreData = [];
+        var maxRange=0;
         var row = ['Centro', '', {role:'annotation'}];
         centreData.push(row);
 
 
-        @foreach ($totalCentreLpa as $c)
+        @foreach ($totalCentreLpa as $i=> $c)
             var row = ["{{$c->centro}}", {{$c->total}}, {{$c->total}}];
             centreData.push(row);
         @endforeach
 
-        var data = google.visualization.arrayToDataTable(centreData);
+        var dataTable = google.visualization.arrayToDataTable(centreData);
+        dataTable.sort([{column: 1, desc: true}]);
+
         var options = {
                             title: 'CENTROS ICOT GRAN CANARIA',
                             backgroundColor: '#EAECEE'
@@ -684,11 +783,19 @@ $(window).scroll(function(){
                             },
                             format: '0'
 
+                        },
+                        hAxis: {
+                            // viewWindow:{
+                            //     min:0,
+                            //     max: maxRange
+                            // },
+                            // format: '0'
+
                         }
                       ,legend: 'none',
                       chartArea : {
                         width: "45%", 
-                        height: "70%"
+                        height: "80%"
                       },
                       colors: [GC]
 
@@ -696,9 +803,12 @@ $(window).scroll(function(){
 
         // Instantiate and draw the chart.
         var chart = new google.visualization.BarChart(document.getElementById('centres_lpa'));
-        chart.draw(data, options);
+        chart.draw(dataTable, options);
     }
 
+    /**
+    * Gráfica de Centros TF
+    */
     function drawCentreTFEChart() {
         var centreData = [];
         var row = ['Centro', '', {role:'annotation'}];
@@ -710,7 +820,11 @@ $(window).scroll(function(){
             centreData.push(row);
         @endforeach
 
-        var data = google.visualization.arrayToDataTable(centreData);
+        var dataTable = google.visualization.arrayToDataTable(centreData);
+        dataTable.sort([{column: 1, desc: true}]);
+        var maxim= dataTable.getColumnRange(0);
+
+
         var options = {title: 'CENTROS ICOT TENERIFE',
                         backgroundColor: '#EAECEE'
                         ,titleTextStyle: {
@@ -725,6 +839,14 @@ $(window).scroll(function(){
                             minTextSpacing : 10
                             },
                             format: '0'
+                        },
+                        hAxis: {
+                            // viewWindow:{
+                            //     min:0,
+                            //     max: maxim
+                            // },
+                            // format: '0'
+
                         }
                       ,legend: 'none',
                       chartArea : {
@@ -737,18 +859,21 @@ $(window).scroll(function(){
 
         // Instantiate and draw the chart.
         var chart = new google.visualization.BarChart(document.getElementById('centres_tfe'));
-        chart.draw(data, options);
+        chart.draw(dataTable, options);
     }
 
-function drawQuestionsChar() {
+    /**
+    * Gráfica de Cuestionario Satisfacción
+    */
+function drawQuestionsChart() {
     var questionData = [];
         var row = ["Edad", "SATISFACCIÓN", { role: "style" }, { role: 'annotation' } ];
         questionData.push(row);
 
         @foreach ($preguntas as $pregunta)
-            @foreach ($porcentPreg as $ppreg)
+            @foreach ($porcentPreg as $i => $ppreg)
                 @if ( $loop->iteration == $pregunta->pregunta )
-            var row = ["P. {{$pregunta->pregunta}}", {{$ppreg}}, "#bc012e", {{$ppreg}} +'%'];
+            var row = ["Pregunta {{$pregunta->pregunta}}", {{$ppreg}}, mycolors[{{$i}}], {{$ppreg}} +'%'];
             questionData.push(row);
                 @endif
             @endforeach
@@ -761,7 +886,7 @@ function drawQuestionsChar() {
             width: 540,
             height: 250,
             // bar: {groupWidth: "70%"},
-            legend: {position:'bottom'},
+            legend: {position:'none'},
             vAxis: {
                 title: 'PORCENTAJE', 
                 minValue:0,
@@ -777,44 +902,18 @@ function drawQuestionsChar() {
                         width: "75%", 
                         height: "70%"
                       },
-                      colors: ['#bc012e']
 
+                      
         };
 
         var questionChart = new google.visualization.ColumnChart(document.getElementById('chartSatisfaccion'));
         questionChart.draw(data, options);
 }
 
-// function drawNPSChart(data, options) {
-//     var data = google.visualization.arrayToDataTable([
-//         ['Genre', 
-//         'Detractores', { role: 'annotation' },
-//         'Pasivos', { role: 'annotation' },
-//         'Promotores', { role: 'annotation' } ],
-//         ['Enero-Junio', {{$totalSatisfaccion['detractores']}}, 'Detractores', {{$totalSatisfaccion['pasivos']}},'Pasivos', {{$totalSatisfaccion['promotores']}}, 'Promotores']
-//       ]);
 
-//       var options_fullStacked = {
-//           isStacked: 'percent',
-//           height: 300,
-//           width: 900,
-//           legend: {position: 'bottom', maxLines: 3},
-//           colors: ['#F5B7B1', '#FAD7A0','#ABEBC6'],
-
-//           vAxis: {
-//             minValue: 0,
-//             ticks: [0, .3, .6, .9, 1]
-//           },
-//           chartArea : {
-//                         width: "65%", 
-//                         height: "50%"
-//                       }
-//         };
-        
-//         var question5Chart = new google.visualization.BarChart(document.getElementById('question5'));
-//         question5Chart.draw(data, options_fullStacked);
-// }
-
+    /**
+    * Gráfica de NetPromoterScore
+    */
 function drawNPSChart() {
         var data = new google.visualization.DataTable();
         data.addColumn('string', 'Pizza');
@@ -842,6 +941,124 @@ function drawNPSChart() {
         var question5Chart = new google.visualization.PieChart(document.getElementById('question5'));
         question5Chart.draw(data, options);
     }
+
+    function drawCarePlansChart(){
+        var data = new google.visualization.DataTable();
+        data.addColumn('string', 'Pizza');
+        data.addColumn('number', 'Popularity');
+        @foreach ($tiposAsistencia as $i => $te)
+        data.addRows([
+            ['{{$te->tipo}}', {{$te->total}}],
+                ]);
+        @endforeach
+
+        var options = {
+            title: 'TIPOS DE ASISTENCIA',
+            width:480,
+            height:480,
+            titleTextStyle: {bold:true, fontSize:20},
+            pieSliceText: 'percentage',
+            sliceVisibilityThreshold: 0,
+            legend: {
+            position:'right',
+    textStyle: {fontSize: 12}
+  },
+  chartArea: {
+    width: '90%',
+    height: '80%'
+  },
+  is3D: true, 
+  colors: mycolors,
+  pieSliceTextStyle: {fontSize: 12}
+};
+
+        var plansChart = new google.visualization.PieChart(document.getElementById('plansChart'));
+        plansChart.draw(data, options);
+    }
+
+
+function drawCompaniesTotal() {
+    var data = [];
+    var row = ["Year", "COMPAÑÍA",{ role: 'style' }, { role: 'annotation' } ];
+    data.push(row);
+    @foreach ($totalCompanies as $i => $te)
+        var row = ["{{$te->company}}", {{$te->total}}, colors[{{$i}}], {{$te->total}}];
+        data.push(row);
+    @endforeach
+
+    var dataTable = google.visualization.arrayToDataTable(data);
+    dataTable.sort([{column: 1, desc: true}]); // Sort by the second column in descending order
+
+    var options = {
+        title: 'COMPAÑÍAS',
+        titleTextStyle: {bold:true, fontSize:20, margin:15},
+        legend: {position: 'none'},
+        vAxis: {
+            title: 'NÚMERO ENCUESTADOS', 
+            minValue:0,
+            format: '0'
+        },
+        hAxis: {
+            textStyle : {
+                fontSize : 10,
+                minTextSpacing : 5
+            },
+        },
+        chartArea : {
+                        width: "80%", 
+                        height: "50%"
+                      },
+
+        bar: {groupWidth: "95%"},
+        //  colors:  colors
+
+
+    };
+
+    var companiesChart = new google.visualization.ColumnChart(document.getElementById('companiesChart'));
+    companiesChart.draw(dataTable, options); // Use the DataView instead of the original DataTable
+}
+
+function drawOtherCompanies() {
+    var data = [];
+    var row = ["Year", "COMPAÑÍA",{ role: 'style' }, { role: 'annotation' } ];
+    data.push(row);
+    @foreach ($totalOtherCompanies as $i => $te)
+        var row = ["{{$te->company}}", {{$te->total}}, colors[{{$i}}], {{$te->total}}];
+        data.push(row);
+    @endforeach
+
+    var dataTable = google.visualization.arrayToDataTable(data);
+    dataTable.sort([{column: 1, desc: true}]); // Sort by the second column in descending order
+
+    var options = {
+        title: 'OTRAS COMPAÑÍAS',
+        titleTextStyle: {bold:true, fontSize:20, margin:15},
+        legend: {position: 'none'},
+        vAxis: {
+            title: 'NÚMERO DE ENCUESTADOS', 
+            minValue:0,
+            // format: '0'
+        },
+        hAxis: {
+            textStyle : {
+                fontSize : 10,
+                minTextSpacing : 5
+            },
+        },
+        chartArea : {
+                        width: "50%", 
+                        height: "50%"
+                      },
+
+        //  colors:  colors
+
+
+    };
+
+    var otherCompaniesChart = new google.visualization.ColumnChart(document.getElementById('otherCompaniesChart'));
+    otherCompaniesChart.draw(dataTable, options); 
+}
 
 
 

@@ -16,7 +16,7 @@
 
 
     <h1> {{$title}} </h1>
-    <h4>Período del {{$period}}</h4>
+    <h4>Período de {{$period}}</h4>
     <!-- <img style="position:absolute;top:7.21in;left:2.85in;width:5.71in;height:0.26in" src="{{asset('assets/img/vi_2.png') }}" /> -->
     <!-- <img style="position:absolute;top:8.48in;left:0.00in;width:4.23in;height:0.48in" src="{{asset('assets/img/ri_3.png') }}" /> -->
     <!--<img style="position:absolute;top:4.92in;left:4.28in;width:3.14in;height:2.29in" src="{{asset('assets/img/ri_4.png') }}" /> -->
