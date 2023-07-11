@@ -90,8 +90,23 @@
                                     {{-- <input type="hidden" name="province" id="province"/> --}}
                                 </div>
                             </div>
-
                             <div class="form-group col-md-4">
+                                <span class="label">{{ __('Centro') }}</span>
+                                <div class="dropdown bootstrap-select">
+                                    <select class="selectpicker" name="centre_id" id="centre_id" data-size="7" data-style="btn btn-red-icot btn-round" title=" Seleccione Centro" tabindex="-98">
+                                        <option value="-1">TODOS</option>
+                                        @foreach ($centres as $centre)
+                                        <option value="{{$centre['code']}}">{{$centre['answer']}}</option>
+                                        @endforeach
+                                    </select>
+                                    {{-- <input type="hidden" name="centre" id="centre"/> --}}
+                                </div>
+                            </div>
+                            
+                        </div>
+
+                        <div class="row  mt-2 px-5">
+                        <div class="form-group col-md-4">
                                 <span class="label">{{ __('Tipo de Paciente') }}</span>
                                 <div class="dropdown bootstrap-select">
                                     <select class="selectpicker" name="patient_id" id="patient_id" data-size="7" data-style="btn btn-red-icot btn-round" title=" Seleccione Tipo de Paciente" tabindex="-98">
@@ -103,9 +118,6 @@
                                     {{-- <input type="hidden" name="patient" id="patient"/> --}}
                                 </div>
                             </div>
-                        </div>
-
-                        <div class="row  mt-2 px-5">
 
                             <div class="form-group col-md-4">
                                 <span class="label">{{ __('Fecha inicio') }}</span>
@@ -275,6 +287,8 @@
 <!-- TODO: Provincia -->
 <script type="text/javascript">
     $(function() {
+        document.getElementById("centre_id").disabled = true;
+
 
         setDate();
         // $('.company_picker').hide();
@@ -286,9 +300,7 @@
         $("#surveyResultsForm").submit(function(event) {
             event.preventDefault();
             var action = $(document.activeElement).attr('formaction');
-
             console.log(params);
-
             params["startDate"] = $("#startDatePicker").val();
             params["endDate"] = $("#endDatePicker").val();
             params["province_id"] = $("#provincia_id option:selected").val();
@@ -297,12 +309,15 @@
             params["patient_id"] = $("#patient_id option:selected").val();
             params["patient_name"]=$("#patient_id option:selected").text();
             params["company"]=$("#company_id option:selected").val();
+            params["centre"]=$("#centre_id option:selected").val();
+            params["centre_name"]=$("#centre_id option:selected").text();
             params["company_name"]=$("#company_id option:selected").text();
+
+            console.log (params);
 
             if (params["startDate"] == null || params["endDate"] == null) {
                 timeOutAlert($('#alertError'), 'DEBE SELECCIONAR FECHA DE INICIO Y FIN');
             }
-
             if (action == 'download') {
                 $('#alertError').hide();
                 $('#btnSubmit').hide();
@@ -385,23 +400,17 @@
                         var response = JSON.parse(xhr.responseText);
                         console.log(response);
                         timeOutAlert($('#alertError'), ' No hay datos que mostrar. Compruebe si hay datos incorrectos o faltan datos.');
-
                         $('#btnPreviewLoad').hide();
                         $('#btnPreview').show();
                     }
-
                 }).fail(function(jqXHR, textStatus, errorThrown) {
                     var response = JSON.parse(jqXHR.responseText);
                     timeOutAlert($('#alertError'), response.mensaje);
                     $('#btnPreviewLoad').hide();
                     $('#btnPreview').show();
-
                 });
-
             }
-
         });
-
 
         $("#btnSendMail").on('click', function(event) {
             $('#alertError').hide();
@@ -416,7 +425,6 @@
             params["to"] = $("#to").val();
             params["subject"] = $("#subject").val();
             params["message"] = $("#message").val();
-
             $.ajax({
                 url: url,
                 type: 'get',
@@ -427,8 +435,6 @@
                         $('#btnSendMail').show();
                         $('#modal-validate .close').click();
                         timeOutAlert($('#alertSuccess'), 'Correo Enviado');
-
-
                     }
 
                 },
@@ -438,38 +444,32 @@
                     $('#btnLoad').hide();
                     $('#btnSendMail').show();
                 }
-
             }).fail(function(jqXHR, textStatus, errorThrown) {
                 var response = JSON.parse(jqXHR.responseText);
                 timeOutAlert($('#alertError'), response.mensaje);
-
             });
         }
-
-
 
         var d = new Date();
         //var textMonthYear =  d.getDate()  + '/' + (d.getMonth()+1) + '/' + d.getFullYear()   ;
         $('#startDatePicker').datepicker($.datepicker.regional["es"]);
         $('#endDatePicker').datepicker($.datepicker.regional["es"]);
-
         params = {};
         params["_token"] = "{{ csrf_token() }}";
-
         function clearForms() {
             $('select#survey_id').val('-1');
             $('select#provincia_id').val('-1');
             $('select#patient_id').val('-1');
             $('select#company_id').val('-1');
+            $('select#centre_id').val('-1');
             $('select#survey_id').selectpicker("refresh");
             $('select#provincia_id').selectpicker("refresh");
             $('select#patient_id').selectpicker("refresh");
             $('select#company_id').selectpicker("refresh");
+            $('select#centre_id').selectpicker("refresh");
             $('input').val('');
             $("#contenedor").html("");
             // $('.company_picker').hide();
-
-
         }
 
         $("#btnClear").on('click', function(e) {
@@ -480,10 +480,12 @@
         $("#survey_id").on('change', function(e) {
             $('select#provincia_id').val('-1');
             $('select#patient_id').val('-1');
+            $('select#centre_id').val('-1');
             // $('.company_picker').hide();
             $('select#provincia_id').selectpicker("refresh");
             $('select#patient_id').selectpicker("refresh");
             $('select#company_id').selectpicker("refresh");
+            $('select#centre_id').selectpicker("refresh");
             $('input').val('');
             $("#contenedor").html("");  
             setDate();
@@ -492,10 +494,8 @@
         $("#patient_id").on('change', function(e) {
              if($("#survey_id option:selected").val()!=285213){
                 $('select#company_id').val('-1');
-
                 var code = $(this).val();
                 console.log(code);
-
             var param = {};
             if (code != 'T4' && code != 'T5') {
                 if (code == 'T1') {
@@ -509,10 +509,6 @@
                 param["code2"] = '324';
                 param["code3"] = '325';
                 }
-                
-               
-           
-
             $.ajax({
                     url: '{{route("survey.queryCompaniesNames")}}',
                     type: 'get',
@@ -532,22 +528,57 @@
                         var response = JSON.parse(xhr.responseText);
                         timeOutAlert($('#alertError'), response.message);
                     }
-
                 }).fail(function(jqXHR, textStatus, errorThrown) {
                     var response = JSON.parse(jqXHR.responseText);
                     timeOutAlert($('#alertError'), response.message);
                 });
-
             } else if (code != '-1') {
                  $('.company_picker').hide();
             }
-
              }
-            
-
         });
 
-
+        $("#provincia_id").on('change', function(e) {
+             if($("#survey_id option:selected").val()!=285213){
+                $('select#centre_id').val('-1');
+                var code = $(this).val();
+                console.log(code);
+            var param = {};
+             if (code != '-1') {
+                if (code == 'C2') {
+                    param["code"] = '312';
+                } else if (code == 'C1') {
+                    param["code"] = '311';
+                } 
+            $.ajax({
+                    url: '{{route("survey.queryCompaniesNames")}}',
+                    type: 'get',
+                    data: param,
+                    success: function(data, textStatus, jqXHR) {
+                        if (textStatus === 'success') {
+                            $("#centre_id").empty();
+                            $("#centre_id").append('<option value="-1" selected>TODOS</option>');
+                            $.each(data, function(index, value) {
+                                $("#centre_id").append('<option value="' + value.code + '">' + value.answer + '</option>');
+                            });
+                            $('#centre_id').prop('disabled', false);
+                            $('#centre_id').selectpicker('refresh');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        var response = JSON.parse(xhr.responseText);
+                        timeOutAlert($('#alertError'), response.message);
+                    }
+                }).fail(function(jqXHR, textStatus, errorThrown) {
+                    var response = JSON.parse(jqXHR.responseText);
+                    timeOutAlert($('#alertError'), response.message);
+                });
+             } else if (code == '-1') {
+                $('#centre_id').prop('disabled', true);
+                $('#centre_id').selectpicker('refresh');
+             }
+             }
+        });
     });
 
     function setDate() {
@@ -555,17 +586,13 @@
         var day = date.getDate();
         var month = date.getMonth() + 1;
         var year = date.getFullYear();
-
         day = day >= 10 ? day : '0' + day;
         month = month >= 10 ? month : '0' + month;
         var date = year + '-' + month + '-' + day;
-        console.log(date);
-
         document.getElementById("startDatePicker").value = date;
         document.getElementById("endDatePicker").value = date;
 
     }
-
 
     function timeOutAlert($alert, $message) {
         $alert.text($message);

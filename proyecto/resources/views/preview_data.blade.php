@@ -154,7 +154,6 @@ background-color: #C0C0C0;
     <strong>{{ $params['company_name']}}  </strong>        
     @elseif ($params['company_name']== 'Otros')
     <strong>OTRAS COMPANÍAS</strong>        
-
     @endif
 </div>
     <hr>
@@ -185,7 +184,12 @@ background-color: #C0C0C0;
             de Otras Compañías
             @endif
         @endif
+       
+        @if ($params['centre']!=-1)
+        de  {{ $params['centre_name']}} 
+        @else
         de los Centros de Rehabilitación de
+        @endif
         @if ( $params['province_name'] == 'TODAS' )
             Tenerife y Gran Canaria
         @else
@@ -263,11 +267,17 @@ background-color: #C0C0C0;
      <div class="d-flex flex-row text-left  mt-2" style="font-size: 12pt;"> Se muestran los resultados obtenidos en cuanto a servicios solicitados. </div>
      </div>
 
+     @if ( $params['centre'] != '-1')
+     <div class="googleChartTitle">
+    <strong>{{ $params['centre_name']}}  </strong>     
+     </div>
+     @endif
+
      @if ( $params['province_name'] == 'TODAS')
          @if ( isset($totalProvincia['Provincia de Las Palmas']) )
-     <div>
+        <div>
             <div class="googleChartTitle">
-            <div id="services_lpa" class="bar-chart"></div>
+                <div id="services_lpa" class="bar-chart"></div>
             </div>
         </div> 
         @endif
@@ -277,21 +287,41 @@ background-color: #C0C0C0;
                     <div id ="services_tfe" class="bar-chart"></div>
                 </div>
             </div>
-            @endif
+        @endif
+    @endif
 
-       @elseif  ( $params['province_name'] == 'Las Palmas')
+    @if  ( $params['province_name'] == 'Las Palmas')
+    @if ( isset($totalProvincia['Provincia de Las Palmas']) )
        <div>
             <div class="googleChartTitle">
             <div id="services_lpa" class="bar-chart"></div>
             </div>
-        </div>    
+        </div> 
+        @endif 
+    @endif
+    @if ( $params['province_name'] == 'Las Palmas' && $params['centre']== 'LP1') 
+        <div>
+            <div class="googleChartTitle">
+            <div id="other_services_poli" class="bar-chart"></div>
+            </div>
+        </div> 
+    @endif 
+    @if ( $params['province_name'] == 'Las Palmas' && $params['centre']== 'LP9') 
+        <div>
+            <div class="googleChartTitle">
+            <div id="other_services_hct" class="bar-chart"></div>
+            </div>
+        </div>  
         @else
+        @if ( isset($totalProvincia['Provincia de Tenerife']) )
+
             <div>
                 <div class="googleChartTitle">
                     <div id ="services_tfe" class="bar-chart"></div>
                 </div>
             </div>
-       @endif
+            @endif
+    @endif
 
     @if ( $params['province_name'] == 'TODAS')
      <div style="margin-top: 50px;margin-bottom: 50px;" class="page_break">
@@ -299,11 +329,13 @@ background-color: #C0C0C0;
      <div style="margin-top: 50px;margin-bottom: 50px;">
     @endif
 
+    @if ( $params['centre_name'] == 'TODOS')
      <h2>RESULTADOS POR CENTROS</h2>
      <div class="d-flex flex-row text-left  mt-2" style="font-size: 12pt;"> Se muestran los resultados obtenidos por centro. </div>
      </div>
- 
-    @if ( $params['province_name'] == 'TODAS')
+     @endif
+
+    @if ( $params['province_name'] == 'TODAS' && $params['centre_name'] == 'TODOS')
         @if ( isset($totalProvincia['Provincia de Las Palmas']) )
         <div>
             <div class="googleChartTitle">
@@ -318,13 +350,13 @@ background-color: #C0C0C0;
             </div>
         </div>
         @endif
-    @elseif ( $params['province_name'] == 'Las Palmas')
+    @elseif ( $params['province_name'] == 'Las Palmas' && $params['centre_name'] == 'TODOS')
             <div>
                 <div class="googleChartTitle">
                     <div id ="centres_lpa" class="bar-chart"></div>
                 </div>
             </div>
-    @else
+    @elseif ( $params['province_name'] == 'Tenerife' && $params['centre_name'] == 'TODOS')
             <div>
                 <div class="googleChartTitle">
                     <div id ="centres_tfe" class="bar-chart"></div>
@@ -422,13 +454,9 @@ background-color: #C0C0C0;
     var colors = ['#AAFFAA', '#BBFFAA', '#CCFFAA', '#DDFFAA', '#EEFFAA', '#FFFFAA', '#FFDDAA', '#FFCCAA', '#FFBBAA', '#FFAAAA'];
     var colours = ['#FF7F50', '#FFD700', '#00FFFF', '#FFA500',  '#EE82EE'];
     var mycolors = [ '#C9C365','#21CCAD', '#FAC559','#F86569', '#8197AF', '#B1A9B1'];
-
-    console.log("{{$params['patient_id']}}");
-    console.log("{{$params['company']}}");
     $totalCompanies= '';
-
+    console.log(document.getElementById('other_services_hct'));
     // window.onload = function() {
-
         google.charts.load('44', {packages: ['corechart']}); 
         var interval = setInterval(function() { 
             if ( google.visualization !== undefined && google.visualization.DataTable !== undefined && google.visualization.PieChart !== undefined ){ 
@@ -437,6 +465,8 @@ background-color: #C0C0C0;
                 var patient = "{{$params['patient_id']}}";
                 var encuesta = "{{$params['survey_id']}}";
                 var company = "{{$params['company']}}";
+                var centre = "{{$params['centre_name']}}";
+                var centre_id = "{{$params['centre']}}";
 
                 drawMonthsChar()
                 drawSexChar(); 
@@ -444,20 +474,28 @@ background-color: #C0C0C0;
                 
                 if (provincia  == 'Las Palmas' || provincia  == 'TODAS') {
                     @if ( isset($totalProvincia['Provincia de Las Palmas']) )
+                    if(centre == 'TODOS'){
                         drawCentreLPAChart();
                         drawServicesCharLPA();
 
+                    }else if (centre_id == 'LP1'){
+                        drawPoliServicesChart();
+                    }else if (centre_id == 'LP9'){
+                        drawHCTServicesChart();
+                    }else{
+                        drawServicesCharLPA();
+                    }
                     @endif
                 }
                 if (provincia  == 'Tenerife' || provincia  == 'TODAS') {
                 @if ( isset($totalProvincia['Provincia de Tenerife']) )
-                drawCentreTFEChart();
-                drawServicesCharTF();
+                    if(centre == 'TODOS'){
+                        drawCentreTFEChart();
+                    }
+                        drawServicesCharTF();
                 @endif
                 }
 
-                
-               
                 drawExperienceChart();
                 drawQuestionsChart();
                 drawNPSChart();
@@ -621,6 +659,32 @@ $(window).scroll(function(){
         @endforeach
 
         var data = google.visualization.arrayToDataTable(edadData);
+        
+        var groupData = google.visualization.data.group(
+    data,
+    [{column: 0, modifier: function () {return 'total'}, type:'string'}],
+    [{column: 1, aggregation: google.visualization.data.sum, type: 'number'}]
+  );
+
+  var formatPercent = new google.visualization.NumberFormat({
+    pattern: '#,##0.0%'
+  });
+
+  var formatShort = new google.visualization.NumberFormat({
+    pattern: 'short'
+  });
+
+  var view = new google.visualization.DataView(data);
+  view.setColumns([0, 1, {
+    calc: function (dt, row) {
+      var amount =  formatShort.formatValue(dt.getValue(row, 1));
+      var percent = formatPercent.formatValue(dt.getValue(row, 1) / groupData.getValue(0, 1));
+      return amount + ' (' + percent + ')';
+    },
+    type: 'string',
+    role: 'annotation'
+  }]);
+
         var options = {
             title: 'EDAD',
             titleTextStyle: {bold:true, fontSize:20, margin:15},
@@ -641,7 +705,7 @@ $(window).scroll(function(){
                 };
 
         var edadChart = new google.visualization.ColumnChart(document.getElementById('chartEdad'));
-        edadChart.draw(data, options);
+        edadChart.draw(view, options);
     }
 
     /**
@@ -660,8 +724,33 @@ $(window).scroll(function(){
             serviceData.push(row);
         @endforeach
 
-        var dataTable = google.visualization.arrayToDataTable(serviceData);
-        dataTable.sort([{column: 1, desc: true}]);
+        var data = google.visualization.arrayToDataTable(serviceData);
+        data.sort([{column: 1, desc: true}]);
+
+        var groupData = google.visualization.data.group(
+    data,
+    [{column: 0, modifier: function () {return 'total'}, type:'string'}],
+    [{column: 1, aggregation: google.visualization.data.sum, type: 'number'}]
+  );
+
+  var formatPercent = new google.visualization.NumberFormat({
+    pattern: '#,##0.0%'
+  });
+
+  var formatShort = new google.visualization.NumberFormat({
+    pattern: 'short'
+  });
+
+  var view = new google.visualization.DataView(data);
+  view.setColumns([0, 1, {
+    calc: function (dt, row) {
+      var amount =  formatShort.formatValue(dt.getValue(row, 1));
+      var percent = formatPercent.formatValue(dt.getValue(row, 1) / groupData.getValue(0, 1));
+      return amount + ' (' + percent + ')';
+    },
+    type: 'string',
+    role: 'annotation'
+  }]);
 
         var options = {
             title: 'SERVICIOS GRAN CANARIA',
@@ -692,7 +781,134 @@ $(window).scroll(function(){
          };
 
         var serviceChart = new google.visualization.BarChart(document.getElementById('services_lpa'));
-        serviceChart.draw(dataTable, options);
+        serviceChart.draw(view, options);
+    }
+
+    /**
+    * Gráfica de Servicios Policlinico
+    */
+    function drawPoliServicesChart() {
+        var serviceData = [];
+        var row = ["Servicio", "SERVICIO", { role: "style" }, { role: 'annotation' }  ];
+        serviceData.push(row);
+        @foreach ($serviciosPoliclinico as $ts)
+            var row = [
+            "{{$ts->servicio}}",
+            {{$ts->total}}, 
+             "#bc012e", 
+             {{$ts->total}}];
+            serviceData.push(row);
+        @endforeach
+
+        var dataTable = google.visualization.arrayToDataTable(serviceData);
+        dataTable.sort([{column: 1, desc: true}]);
+
+        var options = {
+            title: 'SERVICIOS POLICLÍNICO LAS PALMAS',
+            backgroundColor: '#EAECEE'
+                            ,titleTextStyle: {
+                             fontName: 'Calibri', // i.e. 'Times New Roman'
+                            fontSize: 20, // 12, 18 whatever you want (don't specify px)
+                            bold: true,    // true or false
+                            italic: false   // true of false
+                         },
+                        vAxis: {
+                            textStyle : {
+                            fontSize : 10,
+                            minTextSpacing : 10
+                            },
+                            format: '0'
+                        },
+                        hAxis: {
+                            // format: '0'
+
+                        }
+                      ,legend: 'none',
+                      chartArea : {
+                        width: "45%", 
+                        height: "70%"
+                      },
+                      colors: [GC]
+         };
+
+        var poliserviceChart = new google.visualization.BarChart(document.getElementById('other_services_poli'));
+        poliserviceChart.draw(dataTable, options);
+    }
+
+    /**
+    * Gráfica de Servicios HCT
+    */
+    function drawHCTServicesChart() {
+        var serviceData = [];
+        var row = ["Servicio", "SERVICIO", { role: "style" }, { role: 'annotation' }  ];
+        serviceData.push(row);
+        @foreach ($serviciosHCT as $ts)
+            var row = [
+            "{{$ts->servicio}}",
+            {{$ts->total}}, 
+             "#bc012e", 
+             {{$ts->total}}];
+            serviceData.push(row);
+        @endforeach
+
+        var data = google.visualization.arrayToDataTable(serviceData);
+        data.sort([{column: 1, desc: true}]);
+
+        var groupData = google.visualization.data.group(
+    data,
+    [{column: 0, modifier: function () {return 'total'}, type:'string'}],
+    [{column: 1, aggregation: google.visualization.data.sum, type: 'number'}]
+  );
+
+  var formatPercent = new google.visualization.NumberFormat({
+    pattern: '#,##0.0%'
+  });
+
+  var formatShort = new google.visualization.NumberFormat({
+    pattern: 'short'
+  });
+
+  var view = new google.visualization.DataView(data);
+  view.setColumns([0, 1, {
+    calc: function (dt, row) {
+      var amount =  formatShort.formatValue(dt.getValue(row, 1));
+      var percent = formatPercent.formatValue(dt.getValue(row, 1) / groupData.getValue(0, 1));
+      return amount + ' (' + percent + ')';
+    },
+    type: 'string',
+    role: 'annotation'
+  }]);
+
+        var options = {
+            title: 'SERVICIOS HOSPITAL CIUDAD DE TELDE',
+            backgroundColor: '#EAECEE'
+                            ,titleTextStyle: {
+                             fontName: 'Calibri', // i.e. 'Times New Roman'
+                            fontSize: 20, // 12, 18 whatever you want (don't specify px)
+                            bold: true,    // true or false
+                            italic: false   // true of false
+                         },
+                        vAxis: {
+                            textStyle : {
+                            fontSize : 10,
+                            minTextSpacing : 10
+                            },
+                            format: '0'
+                        },
+                        hAxis: {
+                            // format: '0'
+
+                        }
+                      ,legend: 'none',
+                      chartArea : {
+                        width: "45%", 
+                        height: "70%"
+                      },
+                      colors: [GC]
+         };
+
+        var hctserviceChart = new google.visualization.BarChart(document.getElementById('other_services_hct'));
+        hctserviceChart.draw(view, options);
     }
 
     /**
@@ -711,8 +927,33 @@ $(window).scroll(function(){
         @endforeach
 
 
-        var dataTable = google.visualization.arrayToDataTable(serviceData);
-        dataTable.sort([{column: 1, desc: true}]);
+        var data = google.visualization.arrayToDataTable(serviceData);
+        data.sort([{column: 1, desc: true}]);
+
+        var groupData = google.visualization.data.group(
+    data,
+    [{column: 0, modifier: function () {return 'total'}, type:'string'}],
+    [{column: 1, aggregation: google.visualization.data.sum, type: 'number'}]
+  );
+
+  var formatPercent = new google.visualization.NumberFormat({
+    pattern: '#,##0.0%'
+  });
+
+  var formatShort = new google.visualization.NumberFormat({
+    pattern: 'short'
+  });
+
+  var view = new google.visualization.DataView(data);
+  view.setColumns([0, 1, {
+    calc: function (dt, row) {
+      var amount =  formatShort.formatValue(dt.getValue(row, 1));
+      var percent = formatPercent.formatValue(dt.getValue(row, 1) / groupData.getValue(0, 1));
+      return amount + ' (' + percent + ')';
+    },
+    type: 'string',
+    role: 'annotation'
+  }]);
 
         var options = {
             title: 'SERVICIOS TENERIFE',
@@ -744,9 +985,8 @@ $(window).scroll(function(){
                       colors: [TF]
 
         };
-
         var serviceChart = new google.visualization.BarChart(document.getElementById('services_tfe'));
-        serviceChart.draw(dataTable, options);
+        serviceChart.draw(view, options);
     }
 
     /**
@@ -764,8 +1004,33 @@ $(window).scroll(function(){
             centreData.push(row);
         @endforeach
 
-        var dataTable = google.visualization.arrayToDataTable(centreData);
-        dataTable.sort([{column: 1, desc: true}]);
+        var data = google.visualization.arrayToDataTable(centreData);
+        data.sort([{column: 1, desc: true}]);
+
+        var groupData = google.visualization.data.group(
+    data,
+    [{column: 0, modifier: function () {return 'total'}, type:'string'}],
+    [{column: 1, aggregation: google.visualization.data.sum, type: 'number'}]
+  );
+
+  var formatPercent = new google.visualization.NumberFormat({
+    pattern: '#,##0.0%'
+  });
+
+  var formatShort = new google.visualization.NumberFormat({
+    pattern: 'short'
+  });
+
+  var view = new google.visualization.DataView(data);
+  view.setColumns([0, 1, {
+    calc: function (dt, row) {
+      var amount =  formatShort.formatValue(dt.getValue(row, 1));
+      var percent = formatPercent.formatValue(dt.getValue(row, 1) / groupData.getValue(0, 1));
+      return amount + ' (' + percent + ')';
+    },
+    type: 'string',
+    role: 'annotation'
+  }]);
 
         var options = {
                             title: 'CENTROS ICOT GRAN CANARIA',
@@ -803,7 +1068,7 @@ $(window).scroll(function(){
 
         // Instantiate and draw the chart.
         var chart = new google.visualization.BarChart(document.getElementById('centres_lpa'));
-        chart.draw(dataTable, options);
+        chart.draw(view, options);
     }
 
     /**
@@ -820,9 +1085,34 @@ $(window).scroll(function(){
             centreData.push(row);
         @endforeach
 
-        var dataTable = google.visualization.arrayToDataTable(centreData);
-        dataTable.sort([{column: 1, desc: true}]);
-        var maxim= dataTable.getColumnRange(0);
+        var data = google.visualization.arrayToDataTable(centreData);
+        data.sort([{column: 1, desc: true}]);
+        var maxim= data.getColumnRange(0);
+
+        var groupData = google.visualization.data.group(
+    data,
+    [{column: 0, modifier: function () {return 'total'}, type:'string'}],
+    [{column: 1, aggregation: google.visualization.data.sum, type: 'number'}]
+  );
+
+  var formatPercent = new google.visualization.NumberFormat({
+    pattern: '#,##0.0%'
+  });
+
+  var formatShort = new google.visualization.NumberFormat({
+    pattern: 'short'
+  });
+
+  var view = new google.visualization.DataView(data);
+  view.setColumns([0, 1, {
+    calc: function (dt, row) {
+      var amount =  formatShort.formatValue(dt.getValue(row, 1));
+      var percent = formatPercent.formatValue(dt.getValue(row, 1) / groupData.getValue(0, 1));
+      return amount + ' (' + percent + ')';
+    },
+    type: 'string',
+    role: 'annotation'
+  }]);
 
 
         var options = {title: 'CENTROS ICOT TENERIFE',
@@ -859,7 +1149,7 @@ $(window).scroll(function(){
 
         // Instantiate and draw the chart.
         var chart = new google.visualization.BarChart(document.getElementById('centres_tfe'));
-        chart.draw(dataTable, options);
+        chart.draw(view, options);
     }
 
     /**
@@ -986,8 +1276,34 @@ function drawCompaniesTotal() {
         data.push(row);
     @endforeach
 
-    var dataTable = google.visualization.arrayToDataTable(data);
-    dataTable.sort([{column: 1, desc: true}]); // Sort by the second column in descending order
+    var data = google.visualization.arrayToDataTable(data);
+    data.sort([{column: 1, desc: true}]); // Sort by the second column in descending order
+
+    var groupData = google.visualization.data.group(
+    data,
+    [{column: 0, modifier: function () {return 'total'}, type:'string'}],
+    [{column: 1, aggregation: google.visualization.data.sum, type: 'number'}]
+  );
+
+  var formatPercent = new google.visualization.NumberFormat({
+    pattern: '#,##0.0%'
+  });
+
+  var formatShort = new google.visualization.NumberFormat({
+    pattern: 'short'
+  });
+
+  var view = new google.visualization.DataView(data);
+  view.setColumns([0, 1, {
+    calc: function (dt, row) {
+      var amount =  formatShort.formatValue(dt.getValue(row, 1));
+      var percent = formatPercent.formatValue(dt.getValue(row, 1) / groupData.getValue(0, 1));
+      return amount + ' (' + percent + ')';
+    },
+    type: 'string',
+    role: 'annotation'
+  }]);
+
 
     var options = {
         title: 'COMPAÑÍAS',
@@ -1016,7 +1332,7 @@ function drawCompaniesTotal() {
     };
 
     var companiesChart = new google.visualization.ColumnChart(document.getElementById('companiesChart'));
-    companiesChart.draw(dataTable, options); // Use the DataView instead of the original DataTable
+    companiesChart.draw(view, options); // Use the DataView instead of the original DataTable
 }
 
 function drawOtherCompanies() {
