@@ -4,11 +4,11 @@
 <html>
 <head>
     <meta charset="utf-8">
+     <script type="text/javascript" src="http://www.google.com/jsapi"></script>
 
     <!-- <script type="text/javascript" src="https://www.google.com/jsapi"></script> -->
+     {{-- <script src="https://www.gstatic.com/charts/loader.js"></script> --}}
 
-    <script src="https://www.google.com/jsapi"></script>
-    <!-- <script src="https://www.gstatic.com/charts/loader.js"></script> -->
     <link rel="stylesheet" href="{{ asset('css/bootstrap.min.css') }}" />
     <script src="{{asset('js/bootstrap.min.js') }}"></script>
     <style>
@@ -144,7 +144,7 @@ background-color: #C0C0C0;
     </style>
 </head>
 
-<body>
+<body body onload="init();">
 <br>
 <h1>{{$title}}</h1>
 
@@ -208,11 +208,10 @@ background-color: #C0C0C0;
     <div class="d-flex flex-row text-left  mt-2">
         <ul>
         @foreach ($preguntas as $pregunta)
-        <li><strong>{{$pregunta->n_pregunta}}</strong> {{$pregunta->question}}</li>
+        <li><strong>{{$pregunta->type}}: </strong> {{$pregunta->value}}</li>
         @endforeach
         </ul>
     </div>
-
 
     <div class="d-flex flex-row text-left mt-4 pregunta">
         ¿Cuántas encuestas hicimos?
@@ -273,7 +272,7 @@ background-color: #C0C0C0;
      </div>
      @endif
 
-     @if ( $params['province_name'] == 'TODAS')
+    @if ( $params['province_name'] == 'TODAS')
          @if ( isset($totalProvincia['Provincia de Las Palmas']) )
         <div>
             <div class="googleChartTitle">
@@ -288,39 +287,37 @@ background-color: #C0C0C0;
                 </div>
             </div>
         @endif
-    @endif
 
-    @if  ( $params['province_name'] == 'Las Palmas')
-    @if ( isset($totalProvincia['Provincia de Las Palmas']) )
-       <div>
-            <div class="googleChartTitle">
-            <div id="services_lpa" class="bar-chart"></div>
-            </div>
-        </div> 
+    @elseif  ( $params['province_name'] == 'Las Palmas' && ($params['centre']!= 'LP1' && $params['centre']!= 'LP9'))
+        @if ( isset($totalProvincia['Provincia de Las Palmas']) )
+            <div>
+                <div class="googleChartTitle">
+                    <div id="services_lpa" class="bar-chart"></div>
+                </div>
+            </div> 
         @endif 
     @endif
     @if ( $params['province_name'] == 'Las Palmas' && $params['centre']== 'LP1') 
         <div>
             <div class="googleChartTitle">
-            <div id="other_services_poli" class="bar-chart"></div>
+                <div id="other_services_poli" class="bar-chart"></div>
             </div>
         </div> 
-    @endif 
-    @if ( $params['province_name'] == 'Las Palmas' && $params['centre']== 'LP9') 
+    @elseif ( $params['province_name'] == 'Las Palmas' && $params['centre']== 'LP9') 
         <div>
             <div class="googleChartTitle">
             <div id="other_services_hct" class="bar-chart"></div>
             </div>
         </div>  
-        @else
+    @endif
+    @if ( $params['province_name'] == 'Tenerife')
         @if ( isset($totalProvincia['Provincia de Tenerife']) )
-
             <div>
                 <div class="googleChartTitle">
                     <div id ="services_tfe" class="bar-chart"></div>
                 </div>
             </div>
-            @endif
+        @endif
     @endif
 
     @if ( $params['province_name'] == 'TODAS')
@@ -333,7 +330,7 @@ background-color: #C0C0C0;
      <h2>RESULTADOS POR CENTROS</h2>
      <div class="d-flex flex-row text-left  mt-2" style="font-size: 12pt;"> Se muestran los resultados obtenidos por centro. </div>
      </div>
-     @endif
+    @endif
 
     @if ( $params['province_name'] == 'TODAS' && $params['centre_name'] == 'TODOS')
         @if ( isset($totalProvincia['Provincia de Las Palmas']) )
@@ -362,11 +359,7 @@ background-color: #C0C0C0;
                     <div id ="centres_tfe" class="bar-chart"></div>
                 </div>
             </div>
-        
     @endif
-
-
-  
 
     @unless ($params['patient_id'] != '-1')
     <div class="d-flex flex-row text-left mt-2 text-center pregunta" style="margin-top:100px"></div>     
@@ -375,23 +368,24 @@ background-color: #C0C0C0;
             <div class="d-flex flex-row text-left  mt-2" style="font-size: 12pt;"> Se muestran los resultados obtenidos por plan de asistencia. </div>   
             <div id="plansChart" class="googleChartTitle" style="margin-left: 100px;"> </div>
         </div>
-@endunless
-
-
+    @endunless
    
-    @if ($params['patient_id'] != '-1')
-    @if ($params['patient_id'] == 'T1' || $params['patient_id'] == 'T2' || $params['patient_id'] == 'T3')
-        @if ($params['company'] == '-1')                      
-            @if (isset($totalCompanies))
-            <div class="d-flex flex-row text-left mt-2 text-center pregunta" style="margin-top:100px"></div> 
-                    <div style="margin-top: 60px;margin-bottom: 60px;" class="page_break">
+    @if ($params['patient_id'] != '-1' && $params['company'] != '0')
+        @if ($params['patient_id'] == 'T1' || $params['patient_id'] == 'T2' || $params['patient_id'] == 'T3')
+            @if ($params['company'] == '-1')                      
+                @if (isset($totalCompanies))
+                    <div class="d-flex flex-row text-left mt-2 text-center pregunta" style="margin-top:100px"></div> 
+                        <div style="margin-top: 60px;margin-bottom: 60px;" class="page_break">
                         <h2>RESULTADOS POR COMPAÑÍA</h2>
                         <div class="d-flex flex-row text-left  mt-2" style="font-size: 12pt;"> Se muestran las compañías con mayor número de pacientes encuestados. </div>   
                         <div id="companiesChart" class="googleChartTitle bar-chart" style="margin-left: 100px;"></div>
                 
+                @endif
             @endif
         @endif
-        @if (($params['company'] == 'SAL25')||($params['company'] == 'TRA40')||($params['company'] == 'DIV32'))
+    @endif
+    
+    @if ($params['company'] == '0')
             @if (isset($totalOtherCompanies))
             <div class="d-flex flex-row text-left mt-2 text-center pregunta" style="margin-top:100px"></div> 
                     <div style="margin-top: 60px;margin-bottom: 60px;" class="page_break">
@@ -400,9 +394,6 @@ background-color: #C0C0C0;
             <div id="otherCompaniesChart" class="googleChartTitle bar-chart" style="margin-left: 100px;"></div>
             @endif
             </div>
-        @endif
-
-    @endif
     @endif
 
     <div style="margin-top: 50px;margin-bottom: 50px;">
@@ -427,12 +418,11 @@ background-color: #C0C0C0;
 
     <div class="margin-bottom: 0; padding-bottom: 0;" style="font-size: 12pt;">
 
-        @foreach ($preguntas as $pregunta)
+        @foreach ($preguntas as $i=>$pregunta)
             @foreach ($porcentPreg as $ppreg)
-
-                @if ( $loop->iteration == $pregunta->pregunta && $loop->iteration < 6)
-                    <strong>PREGUNTA {{$pregunta->pregunta}} : {{$ppreg}}% </strong><br>
-                    {{$pregunta->question}}  <br>
+                @if ( $loop->iteration == $i +1 && $loop->iteration < 6)
+                    <strong>{{$pregunta->type}} => {{$ppreg}}% </strong><br>
+                    {{$pregunta->value}}  <br>
                     <br>
                     @if ( $loop->iteration == 5 )
                   
@@ -442,11 +432,8 @@ background-color: #C0C0C0;
         @endforeach
 
         <div id="chartSatisfaccion" class="googleChartTitle" style="margin-left: 100px;"></div>
-
     </div>
-
 </div>
-
 
 <script type="text/javascript">
     var GC= '#bc012e';
@@ -455,12 +442,22 @@ background-color: #C0C0C0;
     var colours = ['#FF7F50', '#FFD700', '#00FFFF', '#FFA500',  '#EE82EE'];
     var mycolors = [ '#C9C365','#21CCAD', '#FAC559','#F86569', '#8197AF', '#B1A9B1'];
     $totalCompanies= '';
-    console.log(document.getElementById('other_services_hct'));
-    // window.onload = function() {
-        google.charts.load('44', {packages: ['corechart']}); 
+    console.log(params['company']);
+    init();
+
+
+   // window.onload = function() {
+    function init(){
+        google.load('visualization','44', {
+            packages: ['corechart']
+            }); 
+
         var interval = setInterval(function() { 
             if ( google.visualization !== undefined && google.visualization.DataTable !== undefined && google.visualization.PieChart !== undefined ){ 
+
                 clearInterval(interval); 
+                window.status = 'ready'; 
+
                 var provincia = "{{$params['province_name'] }}";
                 var patient = "{{$params['patient_id']}}";
                 var encuesta = "{{$params['survey_id']}}";
@@ -504,11 +501,14 @@ background-color: #C0C0C0;
                     @if ($params['company'] == '-1')
                         drawCompaniesTotal();
                     @endif
-                    @if (($params['company'] == 'SAL25')||($params['company'] == 'TRA40')||($params['company'] == 'DIV32'))
+                    @if  ($params['company'] == '0')
                         drawOtherCompanies();
                     @endif
-                } else if ((patient == '-1' && company == '-1')|| (patient == '-1' && company != '-1')) {
+                } else if ((patient == '-1' && company == '-1')|| (patient == '-1' && company != '0')) {
                     drawCarePlansChart();
+                }else if (company == '0'){
+                    drawOtherCompanies();
+
                 }
                 
                 // drawCompaniesTotal();
@@ -516,7 +516,7 @@ background-color: #C0C0C0;
 
                 window.status = 'ready'; 
             } }, 100);
-
+}
         // var provincia = "{{$params['province_id'] }}";
         // google.charts.setOnLoadCallback(drawSexChar);
         // google.charts.setOnLoadCallback(drawAgeChar);
@@ -530,7 +530,7 @@ background-color: #C0C0C0;
         //     google.charts.setOnLoadCallback(drawCentreLPAChart);
         //     google.charts.setOnLoadCallback(drawCentreTFEChart);
         // }
-    // };
+     //};
 
     $(document).ready(function(){
 
@@ -1160,10 +1160,10 @@ function drawQuestionsChart() {
         var row = ["Edad", "SATISFACCIÓN", { role: "style" }, { role: 'annotation' } ];
         questionData.push(row);
 
-        @foreach ($preguntas as $pregunta)
+        @foreach ($preguntas as $j=> $pregunta)
             @foreach ($porcentPreg as $i => $ppreg)
-                @if ( $loop->iteration == $pregunta->pregunta )
-            var row = ["Pregunta {{$pregunta->pregunta}}", {{$ppreg}}, mycolors[{{$i}}], {{$ppreg}} +'%'];
+                @if ( $loop->iteration == $j + 1 )
+            var row = ["{{$pregunta->type}}", {{$ppreg}}, mycolors[{{$i}}], {{$ppreg}} +'%'];
             questionData.push(row);
                 @endif
             @endforeach

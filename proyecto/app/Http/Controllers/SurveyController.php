@@ -34,7 +34,7 @@ class SurveyController extends BaseController
     protected $whereCentre;
     protected $whereCompany;
     protected $preguntas;
-    protected $surveyCode = '891295X38X';
+    // protected $surveyCode = '891295X38X';
 
     public function index()
     {
@@ -43,21 +43,26 @@ class SurveyController extends BaseController
             $surveys = LimeSurvey::getLastSurvey();
             $surveyFields = Params::getParams($surveys->sid);
             $this->fields = $this->getFieldsSurvey($surveyFields);
+            $this->icotSurvey = $surveys->sid;
             $campoTrafico = $this->fields[env('PARAM_TRA')]['name'];
             $campoDiverso = $this->fields[env('PARAM_DIV')]['name'];
             $campoSalud = $this->fields[env('PARAM_SAL')]['name'];
             $centreTfe = $this->fields[env('PARAM_CENTRE_TFE')][0]['name'];
             $centreLpa = $this->fields[env('PARAM_CENTRE_LPA')][0]['name'];
+            $typeClient = $this->fields[env('PARAM_TYPECLIENT')][0]['name'];
+            $services = $this->fields[env('PARAM_SERVICE')]['name'];
             $allCompanies = [$campoTrafico, $campoDiverso, $campoSalud];
+            $allCompaniesCodes =  [(int)substr($campoTrafico, -3), (int)substr($campoDiverso, -3), (int)substr($campoSalud, -3)];
             $allCentres = [$centreLpa, $centreTfe];
-            $patientsType = LimeAnswer::getNames(env('PARAM_BUSINESSPLAN_QID'));
-            $servicesType = $this->queryServicesNames(env('PARAM_SERVICES_QID'));
+            $allCentresCodes = [(int)substr($centreLpa, -3), (int)substr($centreTfe, -3)];
+            $patientsType = LimeAnswer::getNames(substr($typeClient, -3));
+            $servicesType = $this->queryServicesNames(substr($services, -3));
             $provinces = Params::getFields(env('PARAM_PROVINCE'));
-            $companies = $this->getAllCompanies($allCompanies);
-            $centres = $this->getAllCompanies($allCentres);
-            foreach ($companies as $company) {
-                $code = $company['code'];
-            }
+            $companies = $this->getAll($allCompanies, $allCompaniesCodes);
+            $centres = $this->getAll($allCentres, $allCentresCodes);
+            // foreach ($companies as $company) {
+            //     $code = $company['code'];
+            // }
 
             return view('surveys', [
                 'title'        => 'ESTADÍSTICAS ICOT',
@@ -66,6 +71,8 @@ class SurveyController extends BaseController
                 'patientsType' => $patientsType,
                 'servicesType' => $servicesType,
                 'companies' => $companies,
+                'allCompanies' => $allCompanies,
+                'allCentres' => $allCentres,
                 'centres' => $centres,
             ]);
         } catch (Exception $e) {
@@ -127,15 +134,28 @@ class SurveyController extends BaseController
         if ($params['patient_id'] == 'T3') {
             $campoCompany = $this->fields[env('PARAM_DIV')]['name'];
         }
-        if ($params['patient_id'] == '-1' && $params['company'] != '-1') {
-            //Get the Qids depending on company_name
-            $codes = LimeAnswer::getQid($params['company_name']);
-            //Get the $campoCompany to filter the sql, joining the qids got previously with the surveyCode
-            foreach ($codes as $code) {
-                $campoCompany[] = [
-                    'column' => $this->surveyCode . $code->qid,
-                    'code' => $code->code
-                ];
+
+        if ($params['patient_id'] == '-1' && $params['company'] != '0') {
+            if ($params['company'] != '-1') {
+                //Get the Qids depending on company_name
+                $codes = LimeAnswer::getQid($params['company_name']);
+                //Get the $campoCompany to filter the sql, joining the qids got previously with the surveyCode
+                foreach ($codes as $code) {
+                    $campoCompany[] = [
+                        'column' => $this->surveyCode . $code->qid,
+                        'code' => $code->code
+                    ];
+                }
+            }
+            // if ($params['company'] == '0') {
+            //     $campoCompany= [$this->fields[env('PARAM_TRA')]['name'].'other',$this->fields[env('PARAM_SAL')]['name'].'other', $this->fields[env('PARAM_DIV')]['name'].'other'];
+
+            // }
+        } else if ($params['patient_id'] == '-1' && $params['company'] == '0') {
+            $campoCompany = [$this->fields[env('PARAM_TRA')]['name'] . 'other', $this->fields[env('PARAM_SAL')]['name'] . 'other', $this->fields[env('PARAM_DIV')]['name'] . 'other'];
+        } else {
+            if ($params['company'] == '0') {
+                $campoCompany = $campoCompany . 'other';
             }
         }
 
@@ -170,18 +190,22 @@ class SurveyController extends BaseController
             $this->whereCompany = '';
             if ($params['company'] != -1) {
                 $campoCompany = $this->getCampoCompany($params);
+                if ($params['company'] != 0) {
 
-                if (is_array($campoCompany)) {
-                    foreach ($campoCompany as $company) {
-                        $where[] = $this->surveyName . '.' . $company['column'] . ' = \'' . $company['code'] . '\'';
-                    }
+                    if (is_array($campoCompany)) {
+                        foreach ($campoCompany as $company) {
+                            $where[] = $this->surveyName . '.' . $company['column'] . ' = \'' . $company['code'] . '\'';
+                        }
 
-                    if (is_array($where)) {
-                        $this->whereCompany = implode(' or ', $where);
-                        $this->whereCompany = '(' . $this->whereCompany . ')';
+                        if (is_array($where)) {
+                            $this->whereCompany = implode(' or ', $where);
+                            $this->whereCompany = '(' . $this->whereCompany . ')';
+                        }
+                    } else {
+                        $this->whereCompany = $this->surveyName . '.' . $campoCompany . ' = \'' . $params['company'] . '\'';
                     }
-                } else {
-                    $this->whereCompany = $this->surveyName . '.' . $campoCompany . ' = \'' . $params['company'] . '\'';
+                } else if ($params['company'] == 0) {
+                    $this->whereCompany = $this->surveyName . '.' . $campoCompany . ' is not null';
                 }
             }
         } catch (\Exception $e) {
@@ -375,13 +399,19 @@ class SurveyController extends BaseController
      * Obterner nombre y total de las companías recogidas al seleccionar 'Otros' en el selector de companías
      * */
 
-    function queryOtherCompanies($where)
+    function queryOtherCompanies($params, $where)
     {
-
-        $campoOtherCompanies = $this->surveyName . '.' . $this->fields[env('PARAM_OTR')]['name'];
-
         try {
-            $otherCompanies = CurrentSurvey::getOtherCompanies($campoOtherCompanies, $where, $this->periodTime);
+            if ($params['company'] == 0 && $params['patient_id'] == -1) {
+                $otherCompaniesCodes = $this->getCampoCompany($params);
+                foreach ($otherCompaniesCodes as $other) {
+                    $campoOtherCompanies = $this->surveyName . '.' . $other;
+                    $otherCompanies[] = CurrentSurvey::getOtherCompanies($campoOtherCompanies, $where, $this->periodTime);
+                }
+            } else {
+                $campoOtherCompanies = $this->surveyName . '.' . $this->getCampoCompany($params);
+                $otherCompanies = CurrentSurvey::getOtherCompanies($campoOtherCompanies, $where, $this->periodTime);
+            }
 
             return $otherCompanies;
         } catch (\Illuminate\Database\QueryException $e) {
@@ -484,7 +514,7 @@ class SurveyController extends BaseController
     {
 
         $alias = 'sexo';
-        $campoSexo = $this->fields[env('PARAM_SEX')]['name'];
+        $campoSexo = $this->fields[env('PARAM_SEX')][0]['name'];
         $qid = substr($campoSexo, -3);
 
         try {
@@ -542,85 +572,80 @@ class SurveyController extends BaseController
      * Obtener datos de servicios requeridos
      * param $where (cláusula where)
      */
-    function queryServices($where)
+    function queryServices($where, $params)
     {
-        $alias = 'servicio';
-        $servicesType = $this->queryServicesNames(env('PARAM_SERVICES_QID'));
-        $surveyCode = '891295X38X';
-        $codetf = '309';
-        $codelp = ['314', '315', '316'];
-
-
-        $whereCond = $where;
-        $totalServiciosTF = CurrentSurvey::getTotalResults($codetf, $surveyCode . $codetf, $alias, $whereCond,  $this->periodTime);
-
-        $totalServicesTF = [];
-        foreach ($servicesType as $service) {
-            $e = 0;
-            foreach ($totalServiciosTF as $tservice) {
-                if ($service == $tservice->servicio) {
-                    $e = 1;
-                    $totalServicesTF[] = (object) array('servicio' => $tservice->servicio, 'total' => $tservice->total);
-                }
-            }
-            if ($e == 0) {
-                $totalServicesTF[] = (object) array('servicio' => $service, 'total' => 0);
-            }
-        }
-        $totalServiciosLP = CurrentSurvey::getTotalResults($codelp[2], $surveyCode . $codelp[2], $alias, $whereCond,  $this->periodTime);
-
-        $bindings = array_merge($this->periodTime, $this->periodTime);
-
-        $totalOtrosCentros = DB::select(
-            'select(' . CurrentSurvey::getIntegerResults($surveyCode . $codelp[0], 'otros', $whereCond, $this->periodTime) . ') + (' . CurrentSurvey::getIntegerResults($surveyCode . $codelp[1], 'otros', $whereCond, $this->periodTime) . ')as otros'
-        );
-
-
-        //         DB::select(
-        //             'select(select count(' . $this->surveyName . '.' . $surveyCode . $codelp[0] . ')
-        //             from  ' .  $this->surveyName .
-        //                 ' where ' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . '  between ? and ? ' . $whereCond . ')+(select count(' . $this->surveyName . '.' . $surveyCode . $codelp[1] . ')
-        // from  ' .  $this->surveyName .
-        //                 ' where ' .  $this->surveyName . '.' . $this->fields[env('PARAM_DATE')]['name'] . '  between ? and ? ' . $whereCond . ')as otros',
-        //             $bindings
-        //         );
-
+        $surveyCode = substr($this->fields[env('PARAM_SERVICE')]['name'], 0, -3);
+        $codelp = [substr($this->fields['servicios_hct']['name'], -3), substr($this->fields['servicios_pol']['name'], -3)];
         $totalServicesLP = [];
-        foreach ($servicesType as $service) {
-            $e = 0;
-            foreach ($totalServiciosLP as $tservice) {
-                if ($service == $tservice->servicio) {
-                    $e = 1;
-                    $totalServicesLP[] = (object) array('servicio' => $tservice->servicio, 'total' => $tservice->total);
-                }
-            }
-            if ($e == 0) {
-                $totalServicesLP[] = (object) array('servicio' => $service, 'total' => 0);
-            }
+        $totalServicesTF = [];
+
+        if ($params['province_id'] == '-1') {
+            $whereCondTF = $where . ' and ' . $this->whereProvinciasTfe;
+            $whereCondLPA = $where . ' and ' . $this->whereProvinciasLpa;
+            $totalServicesLP = $this->getServices($whereCondLPA);
+            $totalServicesTF = $this->getServices($whereCondTF);
+        } else if ($params['province_id'] == 'C1') {
+            $totalServicesTF = $this->getServices($where);
+        } else if ($params['province_id'] == 'C2') {
+            $totalServicesLP = $this->getServices($where);
         }
+        $totalOtrosCentros = DB::select(
+            'select(' . CurrentSurvey::getIntegerResults($surveyCode . $codelp[0], 'otros', $where, $this->periodTime) . ') + (' . CurrentSurvey::getIntegerResults($surveyCode . $codelp[1], 'otros', $where, $this->periodTime) . ')as otros'
+        );
         foreach ($totalServicesLP as $tservicelp) {
             if ($tservicelp->servicio == 'Otros') {
                 $tservicelp->total +=  $totalOtrosCentros[0]->otros;
             }
         }
 
-        // $totalServicesLP[] = (object) array('servicio' => 'Otros', 'total' => $totalOtrosCentros[0]->otros);
         return ['Tenerife' => $totalServicesTF, 'Las Palmas' => $totalServicesLP];
+    }
+
+    function getServices($whereCond)
+    {
+        $alias = 'servicio';
+        $servicesType = $this->queryServicesNames(substr($this->fields[env('PARAM_SERVICE')]['name'], -3));
+        $servicesType[4] = 'Otros';
+        $serviceField = $this->fields[env('PARAM_SERVICE')]['name'];
+        $codeService = substr($this->fields[env('PARAM_SERVICE')]['name'], -3);
+        $OtherServiceField = $this->fields[env('PARAM_SERVICE')]['name'] . 'other';
+
+        $totalServicios = CurrentSurvey::getTotalResults($codeService, $serviceField, $alias, $whereCond,  $this->periodTime);
+
+        $totalServices = [];
+        foreach ($servicesType as $service) {
+            $e = 0;
+            foreach ($totalServicios as $tservice) {
+                if ($service == $tservice->servicio) {
+                    $e = 1;
+                    $totalServices[] = (object) array('servicio' => $tservice->servicio, 'total' => $tservice->total);
+                }
+            }
+            if ($service == 'Otros') {
+                $e = 1;
+                $service =  CurrentSurvey::getIntegerResults($OtherServiceField, 'Otros', $whereCond, $this->periodTime);
+                $totalServices[] = (object) array('servicio' => 'Otros', 'total' => $service);
+            }
+            if ($e == 0) {
+                $totalServices[] = (object) array('servicio' => $service, 'total' => 0);
+            }
+        }
+        return $totalServices;
     }
 
     /**
      * Function to get the services of Policlinico Las Palmas & HCT
      */
-    function queryOtherServices($where, $centreCode){
-        $surveyCode = '891295X38X';
-        $code= $centreCode;
-        $alias= 'servicios';
+    function queryOtherServices($where, $centreCode)
+    {
+        $surveyCode = substr($this->fields[env('PARAM_SERVICE')]['name'], 0, -3);
+        $code = $centreCode;
+        $alias = 'servicios';
         $totalServicios = CurrentSurvey::getTotalResults($code, $surveyCode . $code, $alias, $where,  $this->periodTime);
         foreach ($totalServicios as $ts) {
-            $totalServices[] = (object) array('servicio' =>strpos($ts->servicios,'(') !== false ? substr($ts->servicios,0,strpos($ts->servicios,'(')) : $ts->servicios, 'total' => $ts->total);
+            $totalServices[] = (object) array('servicio' => strpos($ts->servicios, '(') !== false ? substr($ts->servicios, 0, strpos($ts->servicios, '(')) : $ts->servicios, 'total' => $ts->total);
         }
         return $totalServices;
-
     }
 
 
@@ -662,44 +687,37 @@ class SurveyController extends BaseController
         if (!empty($where)) {
             $where = $where . ' and ';
         }
-
-        // $respuestas = ['A4', 'A3', 'A2'];
-        $respuestasPromo = ['A5', 'A4'];
-        $respuestasDetra = ['A2', 'A1'];
+        $respuestasNeutro = ['4', '3', '2'];
         $totalSatisfaccion['promotores'] = 0;
         $totalSatisfaccion['pasivos'] = 0;
         $totalSatisfaccion['detractores'] = 0;
         $totalSatisfaccion['nps'] = 0;
-        $question = '891295X39X313SQ005';
+        $question = $this->fields[env('PARAM_QUESTION5')][0]['name'];
 
-        $promotores=0;
-        foreach ($respuestasPromo as $rp) {
+        $pasivos = 0;
+        foreach ($respuestasNeutro as $rp) {
             $whereCond = $where  . $question . '="' . $rp . '"';
-            $totalPromotores =  CurrentSurvey::getResults($question, 'promotores', $whereCond, $this->periodTime);
-            $promotores += $totalPromotores[0]->promotores;
+            $totalNeutros =  CurrentSurvey::getResults($question, 'pasivos', $whereCond, $this->periodTime);
+            $pasivos += $totalNeutros[0]->pasivos;
         }
 
-        $whereCond = $where . $question . '="A3"';
-        $pasivos = CurrentSurvey::getResults($question, 'pasivos', $whereCond, $this->periodTime);
+        $whereCond = $where . $question . '="5"';
+        $promotores = CurrentSurvey::getResults($question, 'promotores', $whereCond, $this->periodTime);
 
-        $detractores= 0;
-        foreach ($respuestasDetra as $rd) {
-            $whereCond = $where  . $question . '="' . $rd . '"';
-            $totalDetractores =  CurrentSurvey::getResults($question, 'detractores', $whereCond, $this->periodTime);
-            $detractores += $totalDetractores[0]->detractores;
-        }
-        $promoters = ($promotores * 100) / ($promotores + $detractores + $pasivos[0]->pasivos);
+        $whereCond = $where . $question . '="1"';
+        $detractores = CurrentSurvey::getResults($question, 'detractores', $whereCond, $this->periodTime);
+        $promoters = ($promotores[0]->promotores * 100) / ($promotores[0]->promotores + $detractores[0]->detractores + $pasivos);
         if ($promoters == 0) {
             $promoters = ($pasivos[0]->pasivos * 100) / ($promotores + $detractores + $pasivos[0]->pasivos);
             $totalSatisfaccion['promotores'] = $pasivos;
             $totalSatisfaccion['pasivos'] = 0;
         } else {
-            $totalSatisfaccion['promotores'] = $promotores;
-            $totalSatisfaccion['pasivos'] = $pasivos[0]->pasivos;
+            $totalSatisfaccion['promotores'] = $promotores[0]->promotores;
+            $totalSatisfaccion['pasivos'] = $pasivos;
         }
-        $detractors = ($detractores * 100) / ($promotores+ $detractores + $pasivos[0]->pasivos);
+        $detractors = ($detractores[0]->detractores * 100) / ($promotores[0]->promotores + $detractores[0]->detractores + $pasivos);
 
-        $totalSatisfaccion['detractores'] = $detractores;
+        $totalSatisfaccion['detractores'] = $detractores[0]->detractores;
         $totalSatisfaccion['nps'] = round($promoters - $detractors, 1);
 
         return $totalSatisfaccion;
@@ -803,12 +821,20 @@ class SurveyController extends BaseController
     function queryPreguntas($id)
     {
         try {
-            $preguntas = DB::select('select distinct concat( \'PREGUNTA\', \'  \', substr(q.title, 5, 1), \':\') AS n_pregunta, q.question,  substr(q.title, 5, 1) as pregunta
-            from lime_questions q
-            where q.title like \'SQ%\' and q.sid = ' . $id . '
-            and q.title not like \'SQ006%\'
-            order by q.qid
-            ');
+
+            $preguntas = Params::getFilteredFields('pregunta', $id);
+
+            // $questions= [];
+            // foreach ($preguntas as $i => $pregunta) {
+            //     $questions[] = (object) [ 'pregunta' => $pregunta->type, 'question' => $pregunta->value];
+
+            // }
+            // $preguntas = DB::select('select distinct concat( \'PREGUNTA\', \'  \', substr(q.title, 5, 1), \':\') AS n_pregunta, q.question,  substr(q.title, 5, 1) as pregunta
+            // from lime_questions q
+            // where q.title like \'SQ%\' and q.sid = ' . $id . '
+            // and q.title not like \'SQ006%\'
+            // order by q.qid
+            // ');
 
             return $preguntas;
         } catch (\Illuminate\Database\QueryException $e) {
@@ -820,20 +846,20 @@ class SurveyController extends BaseController
     }
 
     //Resultados de satisfacción por centro (ejemplo para HCT)
-    //select la.answer,ls.891295X38X312 , count(ls.891295X39X313SQ005) 
-    // , COUNT(ls.891295X39X313SQ005) * 100 /  (select COUNT(*) from lime_survey_891295 ls 
+    //select la.answer,ls.891295X38X312 , count(ls.891295X39X313SQ005)
+    // , COUNT(ls.891295X39X313SQ005) * 100 /  (select COUNT(*) from lime_survey_891295 ls
     // where ls.submitdate between '2023-01-01' and '2023-06-23'
     // and ls.891295X38X312 = 'LP9'
     // and ls.891295X38X312 is not NULL) as percent_total
-    // from lime_survey_891295 ls 
-    // inner join lime_answers la 
+    // from lime_survey_891295 ls
+    // inner join lime_answers la
     // on la.code = ls.891295X38X312 and la.qid = 312
     // WHERE (ls.891295X39X313SQ005 = 'A5' OR ls.891295X39X313SQ005 = 'A4')
     // AND ls.891295X38X312 is not NULL
     // and ls.submitdate between '2023-01-01' and '2023-06-23'
     // and la.qid = 312
     // and ls.891295X38X312 = 'LP9'
-    // group by ls.891295X38X312 
+    // group by ls.891295X38X312
     // order by count(ls.891295X39X313SQ005) DESC
 
 
@@ -847,35 +873,29 @@ class SurveyController extends BaseController
         // $preguntas = $this->queryPreguntas($id);
 
         if (!empty($where)) {
-            $where = ' and ' . $where;
+            // $where = ' and ' . $where;
         }
-        foreach ($preguntas as $pregunta) {
-            $campoPregunta =   $this->fields[env('PARAM_QUESTION' . $pregunta->pregunta)]['name'];
-            $qid = substr($campoPregunta, 10, 3);
 
-            $porcentPreg[$pregunta->pregunta] = DB::select("select lime_answers.code, COUNT(lime_survey_" . $id . ".`" . $campoPregunta . "`) as total
-                , COUNT(lime_survey_" . $id . ".`" . $campoPregunta . "`) * 100 /  " . $this->totalEncuestados . " as percent_total
-                                    from lime_survey_" . $id . "
-                                    JOIN lime_answers on lime_answers.code=lime_survey_" . $id . ".`" . $campoPregunta . "` and lime_answers.qid= " . $qid .
-                " where " .  $this->surveyName . "." . $this->fields[env('PARAM_DATE')]['name'] . " between ? and ?
-                                    and (lime_answers.code = 'A4' or lime_answers.code = 'A5') "
-                . $where .
-                " group by 1", $this->periodTime);
+        foreach ($preguntas as $i => $pregunta) {
+            $campoPregunta =   $this->fields[env('PARAM_QUESTION' . ($i + 1))][0]['name'];
+            $porcentPreg[($i + 1)] = DB::table('lime_survey_' . $id)
+                ->selectRaw('COUNT(`' . $campoPregunta . '`) * 100 / ' . $this->totalEncuestados . ' as percent_total')
+                ->whereBetween($this->fields[env('PARAM_DATE')]['name'], [$this->periodTime[0], $this->periodTime[1]])
+                ->whereIn($campoPregunta, [4, 5])
+                ->whereRaw($where)
+                ->value('percent_total');
         }
-        foreach ($preguntas as $pregunta) {
+        foreach ($preguntas as $i => $pregunta) {
             $total = 0;
-            if (isset($porcentPreg[$pregunta->pregunta][0])) {
-                $total += $porcentPreg[$pregunta->pregunta][0]->percent_total;
-            }
-            if (isset($porcentPreg[$pregunta->pregunta][1])) {
-                $total += $porcentPreg[$pregunta->pregunta][1]->percent_total;
+            if (isset($porcentPreg[($i + 1)])) {
+                $total += $porcentPreg[($i + 1)];
             }
             $total = round($total, 1);
 
             if ($total > 100) {
-                $porcentPreg[$pregunta->pregunta] = 100;
+                $porcentPreg[($i + 1)] = 100;
             } else {
-                $porcentPreg[$pregunta->pregunta] = $total;
+                $porcentPreg[($i + 1)] = $total;
             }
         }
 
@@ -914,14 +934,11 @@ class SurveyController extends BaseController
             $params['startDate'] = date("Y-m-d", strtotime($params['startDate']));
             $params['endDate'] = date("Y-m-d", strtotime($params['endDate']));
             $this->periodTime = [$params['startDate'],  $params['endDate']];
-
-
             $params['startDate'] = date("d M Y", strtotime($params['startDate']));
             $params['endDate'] = date("d M Y", strtotime($params['endDate']));
             $fechaInicio =  Carbon::parse($params['startDate'])->isoFormat('MMMM YYYY');
             $fechaFin =  Carbon::parse($params['endDate'])->isoFormat('MMMM YYYY');
             $orgPeriod = $fechaInicio . ' a ' . $fechaFin;
-
 
             //Parametros:
             // -- Provincia (C1 Tenerife / C2 Las Palmas)
@@ -950,27 +967,31 @@ class SurveyController extends BaseController
             $totalEdades = $this->queryEdades($where);
             $totalExperiencia = $this->queryExperiencia($where);
             $totalCentros = $this->queryCentros($where);
-            $totalServicios = $this->queryServices($where);
+            $totalServicios = $this->queryServices($where, $params);
             $totalSatisfaccion = $this->queryNetPromoterScore($where);
             $totalSurveys = $this->querySurveyQuantity($where);
             $preguntas = $this->queryPreguntas($params['survey_id']);
             $porcentPreg = $this->queryPercents($where, $params['survey_id'], $preguntas);
             $tiposAsistencia = $this->queryCarePlan($where);
 
-            if($params['centre'] == 'LP1'){
-                $code = '314';
-                $serviciosPoliclinico= $this->queryOtherServices($where,$code);
+            if ($params['centre'] == 'LP1') {
+                $code = substr($this->fields['servicios_pol']['name'], -3);
+                $serviciosPoliclinico = $this->queryOtherServices($where, $code);
             }
-            if($params['centre'] == 'LP9'){
-                $code = '315';
-                $serviciosHCT= $this->queryOtherServices($where,$code);
+            if ($params['centre'] == 'LP9') {
+                $code = substr($this->fields['servicios_hct']['name'], -3);
+                $serviciosHCT = $this->queryOtherServices($where, $code);
             }
 
             if ($params['patient_id'] == 'T1' || $params['patient_id'] == 'T2' || $params['patient_id'] == 'T3') {
-                $totalCompanies = $this->queryCompaniesTotal($params, $where);
-                $totalOtherCompanies = $this->queryOtherCompanies($where);
+                if ($params['company'] != 0) {
+                    $totalCompanies = $this->queryCompaniesTotal($params, $where);
+                }
             }
 
+            if ($params['company'] == 0) {
+                $totalOtherCompanies = $this->queryOtherCompanies($params, $where);
+            }
 
             $data = array(
                 'title'               => 'INFORME ENCUESTAS DE SATISFACCION',
@@ -991,8 +1012,6 @@ class SurveyController extends BaseController
                 'porcentPreg'         => $porcentPreg,
                 'totalEncuestados'    => $this->totalEncuestados,
                 'totalEncuestas'      => $totalSurveys
-
-
             );
             if (isset($totalCompanies)) {
                 $data['totalCompanies'] = $totalCompanies;
@@ -1038,7 +1057,8 @@ class SurveyController extends BaseController
 
             $pdf = new Pdf;
             $pdf->setOptions([
-                'javascript-delay' => 7000,
+                // 'enable-javascript' => true,
+                'javascript-delay' => 1000,
                 'header-html' => $header,
                 // 'header-spacing' => 10,
                 'header-line',
@@ -1074,6 +1094,8 @@ class SurveyController extends BaseController
     public function download(Request $request)
     {
         try {
+
+            
             $pdf = $this->generatePDF($request);
             $dataPDF = env('PUBLIC_PATH');
             if (!$pdf->saveAs($dataPDF)) {
@@ -1149,27 +1171,29 @@ class SurveyController extends BaseController
         }
     }
 
-    public function getAllCompanies($companies = [])
+    public function getAll($items = [], $codes = [])
     {
-        $allCompanies = [];
-        foreach ($companies as $company) {
-            $allCompanies[] = LimeAnswer::getAllCompanies($company)->toArray();
-        }
-
-        $companiesList = [];
-        foreach ($allCompanies as $i => $eachCompaniesGroup) {
-            foreach ($eachCompaniesGroup as $eachCompany) {
-                $companiesList[] = $eachCompany;
+        $allItems = [];
+        foreach ($items as $item) {
+            foreach ($codes as $code) {
+                $allItems[] = LimeAnswer::getAllCompanies($item, $code)->toArray();
             }
         }
 
-        $companiesList = collect($companiesList)
+        $itemsList = [];
+        foreach ($allItems as $i => $eachItemGroup) {
+            foreach ($eachItemGroup as $eachItem) {
+                $itemsList[] = $eachItem;
+            }
+        }
+
+        $itemsList = collect($itemsList)
             ->unique('answer')
             ->sortBy('answer')
             ->values()
             ->all();
 
-        return $companiesList;
+        return $itemsList;
     }
 
 
@@ -1178,7 +1202,7 @@ class SurveyController extends BaseController
      *
      * @param $wordChain $string The string to check.
      * @param  $repeated the chain of words you want to check for
-     * @param  $remove the word/chain of words you want to remove 
+     * @param  $remove the word/chain of words you want to remove
      * @return string|null the new string
      */
     public function checkRepeatedWords($wordChain, $repeated, $remove)

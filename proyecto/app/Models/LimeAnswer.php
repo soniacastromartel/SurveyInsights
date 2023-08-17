@@ -30,12 +30,14 @@ class LimeAnswer extends Model
         return $names;
     }
 
-    public static function getAllCompanies($code)
+    public static function getAllCompanies($code,$qid)
     {
+        $surveys = LimeSurvey::getLastSurvey();
         $companies = LimeAnswer::select('answer', 'code')
             ->distinct()
-            ->join('lime_survey_891295 as ls', function ($join) use ($code) {
+            ->join('lime_survey_'.$surveys->sid.' as ls', function ($join) use ($code,$qid) {
                 $join->on('lime_answers.code', '=', $code);
+                $join ->where('lime_answers.qid', '=', $qid); // Add this line;
             })
             ->groupBy('lime_answers.answer')
             ->get();

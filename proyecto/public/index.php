@@ -48,8 +48,14 @@ $app = require_once __DIR__.'/../bootstrap/app.php';
 
 $kernel = $app->make(Kernel::class);
 
+$response="";
 $response = tap($kernel->handle(
     $request = Request::capture()
 ))->send();
+
+
+if(!isset($response)){
+    echo 'no hay respuesta';
+}
 
 $kernel->terminate($request, $response);

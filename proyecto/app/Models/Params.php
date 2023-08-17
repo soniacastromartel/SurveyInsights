@@ -39,5 +39,13 @@ class Params extends Model
         return $fields;
     }
 
+    public function getFilteredFields($field, $sid){
+        return self::select('type', 'value')
+            ->where('name', 'like', $field . '%')
+            ->where('survey_id', '=', $sid)
+            ->distinct()
+            ->get();
+    }
+
 
 }

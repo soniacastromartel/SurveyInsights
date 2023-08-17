@@ -10,31 +10,55 @@ class CurrentSurvey extends Model
 {
     use HasFactory;
 
-    protected $table = 'lime_survey_891295';
+    // protected $table = 'lime_survey_891295';
+    protected $table = 'lime_survey_989931';
 
     protected $fillable = [
         'id',
         'submitdate',
-        '891295X38X305',
-        '891295X38X306',
-        '891295X38X307',
-        '891295X38X308',
-        '891295X38X309',
-        '891295X38X310',
-        '891295X38X311',
-        '891295X38X312',
-        '891295X38X314',
-        '891295X38X315',
-        '891295X38X316',
-        '891295X38X323',
-        '891295X38X324',
-        '891295X38X325',
-        '891295X38X326',
-        '891295X39X313SQ001',
-        '891295X39X313SQ002',
-        '891295X39X313SQ003',
-        '891295X39X313SQ004',
-        '891295X39X313SQ005'
+        "989931X48X412",//edad
+        "989931X48X413",//sexo
+        "989931X48X414",//experiencia
+        "989931X49X415",//provincia
+        "989931X49X416",//centrotf
+        "989931X49X417",//centrolp
+        "989931X49X427",//servicios
+        "989931X49X427other",//servicios_otros
+        "989931X49X429",//servicios_POL
+        "989931X49X428",//servicios_HCT
+        "989931X49X418",//tipo_asistencia
+        "989931X49X419",// trafico
+        "989931X49X419other",//trafico_otros
+        "989931X49X420",//diversos
+        "989931X49X420other",//diversos_otros
+        "989931X49X421",//salud
+        "989931X49X421other",//salud_otros
+        "989931X50X422",//pregunta1
+        "989931X50X423",//pregunta2
+        "989931X50X424",//pregunta3
+        "989931X50X425",//pregunta4
+        "989931X50X426"//pregunta5
+
+        // '891295X38X305',
+        // '891295X38X306',
+        // '891295X38X307',
+        // '891295X38X308',
+        // '891295X38X309',
+        // '891295X38X310',
+        // '891295X38X311',
+        // '891295X38X312',
+        // '891295X38X314',
+        // '891295X38X315',
+        // '891295X38X316',
+        // '891295X38X323',
+        // '891295X38X324',
+        // '891295X38X325',
+        // '891295X38X326',
+        // '891295X39X313SQ001',
+        // '891295X39X313SQ002',
+        // '891295X39X313SQ003',
+        // '891295X39X313SQ004',
+        // '891295X39X313SQ005'
 
     ];
 

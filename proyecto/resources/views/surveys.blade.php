@@ -140,10 +140,11 @@
                                 <span class="label">{{ __('Compañía') }}</span>
                                 <div class="dropdown bootstrap-select">
                                     <select class="selectpicker" name="company_id" id="company_id" data-size="7" data-style="btn btn-red-icot btn-round" title=" Seleccione Compañía" tabindex="-98">
-                                        <option value="-1" selected>TODAS</option>
+                                        <option value="-1">TODAS</option>
                                         @foreach ($companies as $company)
-                                        <option value="{{$company['code']}}">{{$company['answer']}}</option>
+                                            <option value="{{$company['code']}}">{{$company['answer']}}</option>
                                         @endforeach
+                                            <option value="0">OTRAS</option>
                                     </select>
                                     {{-- <input type="hidden" name="patient" id="patient"/> --}}
                                 </div>
@@ -286,10 +287,11 @@
 <!-- TODO: Fecha -->
 <!-- TODO: Provincia -->
 <script type="text/javascript">
-    $(function() {
+    var allCompanies = @json($allCompanies);
+    var allCentres = @json($allCentres);
+    $(document).ready(function() {
         document.getElementById("centre_id").disabled = true;
-
-
+        document.getElementById("company_id").disabled = true;
         setDate();
         // $('.company_picker').hide();
 
@@ -400,6 +402,7 @@
                         var response = JSON.parse(xhr.responseText);
                         console.log(response);
                         timeOutAlert($('#alertError'), ' No hay datos que mostrar. Compruebe si hay datos incorrectos o faltan datos.');
+                        $("#contenedor").html("");  
                         $('#btnPreviewLoad').hide();
                         $('#btnPreview').show();
                     }
@@ -440,7 +443,7 @@
                 },
                 error: function(xhr, status, error) {
                     var response = JSON.parse(xhr.responseText);
-                    timeOutAlert($('#alertError'), 'No hay datos que mostrar. Compruebe si hay datos incorrectos o faltan datos.');
+                    timeOutAlert($('#alertError'), 'No ha sido posible enviar el correo.');
                     $('#btnLoad').hide();
                     $('#btnSendMail').show();
                 }
@@ -469,7 +472,6 @@
             $('select#centre_id').selectpicker("refresh");
             $('input').val('');
             $("#contenedor").html("");
-            // $('.company_picker').hide();
         }
 
         $("#btnClear").on('click', function(e) {
@@ -481,7 +483,7 @@
             $('select#provincia_id').val('-1');
             $('select#patient_id').val('-1');
             $('select#centre_id').val('-1');
-            // $('.company_picker').hide();
+            $('select#company_id').val('-1');
             $('select#provincia_id').selectpicker("refresh");
             $('select#patient_id').selectpicker("refresh");
             $('select#company_id').selectpicker("refresh");
@@ -492,22 +494,21 @@
         });
 
         $("#patient_id").on('change', function(e) {
-             if($("#survey_id option:selected").val()!=285213){
                 $('select#company_id').val('-1');
                 var code = $(this).val();
-                console.log(code);
-            var param = {};
-            if (code != 'T4' && code != 'T5') {
+                var param = {};
+        if (code != '-1' && code != 'T4' && code != 'T5'  ) {
+                $('.company_picker').show();
                 if (code == 'T1') {
-                    param["code"] = '323';
+                    param["code"] =  allCompanies[0].slice(-3);
                 } else if (code == 'T2') {
-                    param["code"] = '325';
+                    param["code"] = allCompanies[2].slice(-3);
                 } else if (code == 'T3') {
-                    param["code"] = '324';
+                    param["code"] = allCompanies[1].slice(-3);
                 }else if (code == '-1'){
-                param["code1"] = '323';
-                param["code2"] = '324';
-                param["code3"] = '325';
+                param["code1"] = allCompanies[0].slice(-3);
+                param["code2"] = allCompanies[1].slice(-3);
+                param["code3"] = allCompanies[2].slice(-3);
                 }
             $.ajax({
                     url: '{{route("survey.queryCompaniesNames")}}',
@@ -515,12 +516,15 @@
                     data: param,
                     success: function(data, textStatus, jqXHR) {
                         if (textStatus === 'success') {
-                            $('.company_picker').show();
+                            $('#company_id').prop('disabled', false);
+                            $('#company_id').selectpicker('refresh');
                             $("#company_id").empty();
                             $("#company_id").append('<option value="-1" selected>TODAS </option>');
                             $.each(data, function(index, value) {
                                 $("#company_id").append('<option value="' + value.code + '">' + value.answer + '</option>');
                             });
+                            $("#company_id").append('<option value="0">OTRAS</option>');
+
                             $('#company_id').selectpicker('refresh');
                         }
                     },
@@ -532,23 +536,22 @@
                     var response = JSON.parse(jqXHR.responseText);
                     timeOutAlert($('#alertError'), response.message);
                 });
-            } else if (code != '-1') {
-                 $('.company_picker').hide();
-            }
-             }
+            } else {
+                $('#company_id').prop('disabled', true);
+                $('#company_id').selectpicker('refresh');
+            }     
         });
 
         $("#provincia_id").on('change', function(e) {
              if($("#survey_id option:selected").val()!=285213){
                 $('select#centre_id').val('-1');
                 var code = $(this).val();
-                console.log(code);
             var param = {};
              if (code != '-1') {
                 if (code == 'C2') {
-                    param["code"] = '312';
+                    param["code"] = allCentres[0].slice(-3);
                 } else if (code == 'C1') {
-                    param["code"] = '311';
+                    param["code"] = allCentres[1].slice(-3);
                 } 
             $.ajax({
                     url: '{{route("survey.queryCompaniesNames")}}',
