@@ -13,6 +13,7 @@ use Illuminate\Support\Carbon;
 
 use App\Models\LimeSurvey;
 use App\Models\CurrentSurvey;
+use App\Models\LimeQuestions;
 use App\Models\Params;
 use Exception;
 use Hamcrest\Arrays\IsArray;
@@ -21,8 +22,8 @@ use Hamcrest\Arrays\IsArray;
 
 class SurveyController extends BaseController
 {
-    protected $icotSurvey;
-    protected $encuestas;
+    // protected $icotSurvey;
+    // protected $encuestas;
     protected $surveyName;
     protected $periodTime;
     protected $totalEncuestados;
@@ -34,36 +35,29 @@ class SurveyController extends BaseController
     protected $whereCentre;
     protected $whereCompany;
     protected $preguntas;
-    // protected $surveyCode = '891295X38X';
+    protected $questions;
 
     public function index()
     {
         try {
-            // $campoTrafico = $this->fields[env('PARAM_TRA')][0]['field'];
             $surveys = LimeSurvey::getLastSurvey();
-            $surveyFields = Params::getParams($surveys->sid);
+            $surveyFields = CurrentSurvey::getCurrentSurveyFields();
+            $this->questions =  LimeQuestions::getQuestionsBySurveyId($surveys->sid);
             $this->fields = $this->getFieldsSurvey($surveyFields);
-            $this->icotSurvey = $surveys->sid;
-            $campoTrafico = $this->fields[env('PARAM_TRA')]['name'];
-            $campoDiverso = $this->fields[env('PARAM_DIV')]['name'];
-            $campoSalud = $this->fields[env('PARAM_SAL')]['name'];
-            $centreTfe = $this->fields[env('PARAM_CENTRE_TFE')][0]['name'];
-            $centreLpa = $this->fields[env('PARAM_CENTRE_LPA')][0]['name'];
-            $typeClient = $this->fields[env('PARAM_TYPECLIENT')][0]['name'];
-            $services = $this->fields[env('PARAM_SERVICE')]['name'];
+            $campoTrafico = $this->fields[env('PARAM_TRA')]['field'];
+            $campoDiverso = $this->fields[env('PARAM_DIV')]['field'];
+            $campoSalud = $this->fields[env('PARAM_SAL')]['field'];
+            $centreTfe = $this->fields[env('PARAM_CENTRE_TFE')]['field'];
+            $centreLpa = $this->fields[env('PARAM_CENTRE_LPA')]['field'];
             $allCompanies = [$campoTrafico, $campoDiverso, $campoSalud];
-            $allCompaniesCodes =  [(int)substr($campoTrafico, -3), (int)substr($campoDiverso, -3), (int)substr($campoSalud, -3)];
+            $allCompaniesCodes =  [$this->fields[env('PARAM_TRA')]['code'], $this->fields[env('PARAM_DIV')]['code'], $this->fields[env('PARAM_SAL')]['code']];
             $allCentres = [$centreLpa, $centreTfe];
-            $allCentresCodes = [(int)substr($centreLpa, -3), (int)substr($centreTfe, -3)];
-            $patientsType = LimeAnswer::getNames(substr($typeClient, -3));
-            $servicesType = $this->queryServicesNames(substr($services, -3));
-            $provinces = Params::getFields(env('PARAM_PROVINCE'));
+            $allCentresCodes = [$this->fields[env('PARAM_CENTRE_TFE')]['code'], $this->fields[env('PARAM_CENTRE_LPA')]['code']];
+            $patientsType = LimeAnswer::getNames($this->fields[env('PARAM_TYPECLIENT')]['code']);
+            $servicesType = $this->queryServicesNames($this->fields[env('PARAM_SERVICE')]['code']);
+            $provinces = LimeAnswer::getNames($this->fields[env('PARAM_PROVINCE')]['code']);
             $companies = $this->getAll($allCompanies, $allCompaniesCodes);
             $centres = $this->getAll($allCentres, $allCentresCodes);
-            // foreach ($companies as $company) {
-            //     $code = $company['code'];
-            // }
-
             return view('surveys', [
                 'title'        => 'ESTADÍSTICAS ICOT',
                 'provinces'    => $provinces,
@@ -242,12 +236,17 @@ class SurveyController extends BaseController
     public function getFieldsSurvey($surveyFields)
     {
         $fields = [];
+        $fields[env('PARAM_DATE')]   = ['name' =>  env('PARAM_DATE')];
         foreach ($surveyFields as $key => $sf) {
-            if (!empty($sf->type)) {
-                $fields[$sf->name][] = ['name' =>  $sf->field, 'type' => [$sf->type => $sf->value]];
-            } else {
-                $fields[$sf->name]   = ['name' =>  $sf->field];
-            }
+            $fields[$sf->question]   = [
+                'field' =>  $sf->field,
+                'code' =>  $sf->code
+            ];
+            // if (!empty($sf->type)) {
+            //     $fields[$sf->name][] = ['question' =>  $sf->question, 'type' => [$sf->field]];
+            // } else {
+            //     $fields[$sf->question]   = ['field' =>  $sf->field];
+            // }
         }
         return $fields;
     }
@@ -608,7 +607,6 @@ class SurveyController extends BaseController
         $servicesType[4] = 'Otros';
         $serviceField = $this->fields[env('PARAM_SERVICE')]['name'];
         $codeService = substr($this->fields[env('PARAM_SERVICE')]['name'], -3);
-        $OtherServiceField = $this->fields[env('PARAM_SERVICE')]['name'] . 'other';
 
         $totalServicios = CurrentSurvey::getTotalResults($codeService, $serviceField, $alias, $whereCond,  $this->periodTime);
 
@@ -620,11 +618,6 @@ class SurveyController extends BaseController
                     $e = 1;
                     $totalServices[] = (object) array('servicio' => $tservice->servicio, 'total' => $tservice->total);
                 }
-            }
-            if ($service == 'Otros') {
-                $e = 1;
-                $service =  CurrentSurvey::getIntegerResults($OtherServiceField, 'Otros', $whereCond, $this->periodTime);
-                $totalServices[] = (object) array('servicio' => 'Otros', 'total' => $service);
             }
             if ($e == 0) {
                 $totalServices[] = (object) array('servicio' => $service, 'total' => 0);
@@ -936,8 +929,8 @@ class SurveyController extends BaseController
             $this->periodTime = [$params['startDate'],  $params['endDate']];
             $params['startDate'] = date("d M Y", strtotime($params['startDate']));
             $params['endDate'] = date("d M Y", strtotime($params['endDate']));
-            $fechaInicio =  Carbon::parse($params['startDate'])->isoFormat('MMMM YYYY');
-            $fechaFin =  Carbon::parse($params['endDate'])->isoFormat('MMMM YYYY');
+            $fechaInicio =  Carbon::parse($params['startDate'])->isoFormat('DD MMMM YYYY');
+            $fechaFin =  Carbon::parse($params['endDate'])->isoFormat('DD MMMM YYYY');
             $orgPeriod = $fechaInicio . ' a ' . $fechaFin;
 
             //Parametros:
@@ -1095,7 +1088,7 @@ class SurveyController extends BaseController
     {
         try {
 
-            
+
             $pdf = $this->generatePDF($request);
             $dataPDF = env('PUBLIC_PATH');
             if (!$pdf->saveAs($dataPDF)) {
@@ -1148,9 +1141,6 @@ class SurveyController extends BaseController
             $emailData['view']    = 'emails.delivered_report';
             $emailsTo = explode(';', $emailData['to']);
             $emailData['file'] = $file;
-
-
-
             /**
              * ENVIAR CORREO
              */

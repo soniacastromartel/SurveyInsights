@@ -32,15 +32,10 @@ class LimeSurvey extends Model
     public function scopeGetLastSurvey()
     {
         $survey = LimeSurvey::select('sid', 'name')
-            ->where('sid', '989931')
+            ->where('sid', env('PARAM_LASTSURVEY_SID'))
             ->first();
 
         return $survey;
-        // $survey = LimeSurvey::select('sid', 'name')
-        //     ->where('sid', '891295')
-        //     ->first();
-
-        // return $survey;
     }
 
     public function scopeGetActiveSurveys()

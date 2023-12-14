@@ -13,20 +13,17 @@
     <script src="{{asset('js/bootstrap.min.js') }}"></script>
     <style>
           .pie-chart {
-            width: 400px;
-            height:400px;
-            /* margin-bottom: 200px;
-            margin-top: 200px; */
-            /* margin-left: 70px; */
+            width: 600px;
+            height:600px;
            
         }
         .column-chart {
-            width: 400px;
-            height:350px;
+            width: 600px;
+            height:500px;
         }
         .bar-chart {
-            width: 800px;
-            height:400px;
+            width: 1200px;
+            height:600px;
             /* margin: 0 auto; */
         }
         .googleChartTitle {
@@ -256,7 +253,7 @@ background-color: #C0C0C0;
      </div>
 
     <div class="googleChartTitle">
-        <div id="chartExperiencia" class="pie-chart" style="margin:0 auto;margin-top: 550px;margin-bottom: 50px;"></div>
+        <div id="chartExperiencia" class="pie-chart" style="margin:0 auto;margin-top: 700px;margin-bottom: 50px;"></div>
      </div>
     <br>
 
@@ -431,7 +428,7 @@ background-color: #C0C0C0;
             @endforeach
         @endforeach
 
-        <div id="chartSatisfaccion" class="googleChartTitle" style="margin-left: 100px;"></div>
+        <div id="chartSatisfaccion" class="googleChartTitle" style="margin-left: 320px;margin-top: 100px;"></div>
     </div>
 </div>
 
@@ -593,8 +590,8 @@ $(window).scroll(function(){
         var options = {
             title: 'EXPERIENCIA',
             pieHole: 0.46,
-            width:460,
-            height:460,
+            width:600,
+            height:600,
             titleTextStyle: {bold:true, fontSize:20},
             // sliceVisibilityThreshold: .2,
             legend: {position:'bottom'},
@@ -603,7 +600,6 @@ $(window).scroll(function(){
             colors: [GC, TF]
 
         };
-
         var experienceChart = new google.visualization.PieChart(document.getElementById('chartExperiencia'));
         experienceChart.draw(data, options);
     }
@@ -1050,16 +1046,12 @@ $(window).scroll(function(){
 
                         },
                         hAxis: {
-                            // viewWindow:{
-                            //     min:0,
-                            //     max: maxRange
-                            // },
-                            // format: '0'
+                            
 
                         }
                       ,legend: 'none',
                       chartArea : {
-                        width: "45%", 
+                        width: "65%", 
                         height: "80%"
                       },
                       colors: [GC]
@@ -1140,7 +1132,7 @@ $(window).scroll(function(){
                         }
                       ,legend: 'none',
                       chartArea : {
-                        width: "45%", 
+                        width: "65%", 
                         height: "70%"
                       },
                       colors: [TF]
@@ -1173,8 +1165,8 @@ function drawQuestionsChart() {
         var options = {
             title: 'SATISFACCIÓN',
             titleTextStyle: {bold:true, fontSize:20, margin:15},
-            width: 540,
-            height: 250,
+            width: 800,
+            height: 400,
             // bar: {groupWidth: "70%"},
             legend: {position:'none'},
             vAxis: {
@@ -1217,8 +1209,8 @@ function drawNPSChart() {
         var options = {
             // title: 'NPS : {{$totalSatisfaccion['nps']}}',
             pieHole: 0.48,
-            width:430,
-            height:430,
+            width:600,
+            height:500,
             pieSliceTextStyle: {color:'black', bold:'true', fontSize:16},
             // sliceVisibilityThreshold: .2,
             legend: {position:'bottom'},
@@ -1244,8 +1236,8 @@ function drawNPSChart() {
 
         var options = {
             title: 'TIPOS DE ASISTENCIA',
-            width:480,
-            height:480,
+            width:600,
+            height:600,
             titleTextStyle: {bold:true, fontSize:20},
             pieSliceText: 'percentage',
             sliceVisibilityThreshold: 0,

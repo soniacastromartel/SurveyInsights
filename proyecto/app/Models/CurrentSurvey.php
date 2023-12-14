@@ -5,7 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use DB;
-
+use App\Models\LimeSurvey;
+use App\Models\LimeQuestions;
 class CurrentSurvey extends Model
 {
     use HasFactory;
@@ -38,27 +39,6 @@ class CurrentSurvey extends Model
         "989931X50X424",//pregunta3
         "989931X50X425",//pregunta4
         "989931X50X426"//pregunta5
-
-        // '891295X38X305',
-        // '891295X38X306',
-        // '891295X38X307',
-        // '891295X38X308',
-        // '891295X38X309',
-        // '891295X38X310',
-        // '891295X38X311',
-        // '891295X38X312',
-        // '891295X38X314',
-        // '891295X38X315',
-        // '891295X38X316',
-        // '891295X38X323',
-        // '891295X38X324',
-        // '891295X38X325',
-        // '891295X38X326',
-        // '891295X39X313SQ001',
-        // '891295X39X313SQ002',
-        // '891295X39X313SQ003',
-        // '891295X39X313SQ004',
-        // '891295X39X313SQ005'
 
     ];
 
@@ -147,5 +127,21 @@ class CurrentSurvey extends Model
         $otherCompanies = $total->get();
 
         return $otherCompanies;
+    }
+
+    public function scopeGetCurrentSurveyFields($query){
+        $survey = LimeSurvey::getLastSurvey();
+        $questionList=  LimeQuestions::getQuestionsBySurveyId($survey->sid);
+        $surveyFieldsList= [];
+
+        foreach ($questionList as $questions) {
+            $surveyField= $survey->sid .'X'.$questions->gid.'X'.$questions->qid;
+            $surveyFieldsList[] = (object) [
+                'question' =>$questions->title, 
+                'field' => $surveyField,
+                'code' => $questions->qid
+            ]; 
+        }
+        return $surveyFieldsList;
     }
 }

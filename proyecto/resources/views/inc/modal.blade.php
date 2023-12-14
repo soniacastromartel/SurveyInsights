@@ -13,7 +13,7 @@
                 </div>
 
                 <fieldset>
-                    <input placeholder="Remitente" type="email" tabindex="1" name="name" required autofocus>
+                    <input placeholder="Remitente" type="text" tabindex="1" name="name" required autofocus>
                 </fieldset>
                 <fieldset>
                     <input placeholder="Destinatario" type="email" tabindex="2" name="name" required autofocus>
