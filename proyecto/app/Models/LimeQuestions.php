@@ -14,10 +14,11 @@ class LimeQuestions extends Model
         'qid',
         'sid',
         'gid',
-        'title'
+        'title',
+        'question'
     ];
 
-    
+
     public function scopeGetQuestionsBySurveyId($query, $surveyId)
     {
         $fillableFields = $this->fillable;
@@ -25,14 +26,42 @@ class LimeQuestions extends Model
             ->where('sid', $surveyId)
             ->get();
 
-            $resultArray = [];
-            foreach ($questions as $question) {
-                $questionArray = [];
-                foreach ($fillableFields as $field) {
-                    $questionArray[$field] = $question->$field;
-                }
-                $resultArray[] = (object) $questionArray;
+        $resultArray = [];
+        foreach ($questions as $question) {
+            $questionArray = [];
+            foreach ($fillableFields as $field) {
+                $questionArray[$field] = $question->$field;
             }
-    
-            return $resultArray;    }
+            $resultArray[] = (object) $questionArray;
+        }
+
+        return $resultArray;
+    }
+
+
+    public function scopeGetFieldsBySidAndGid($query, $sid, $gid)
+    {
+        $questions = $query->select('question')
+            ->where('sid', $sid)
+            ->where('gid', $gid)
+            ->get();
+
+        $resultArray = [];
+        foreach ($questions as $question) {
+            $normalizedQuestion = $this->normalizeString($question->question);
+            $resultArray[] = (object)['question' => $normalizedQuestion];
+        }
+
+        return $resultArray;
+    }
+
+
+   public function normalizeString($htmlString)
+    {
+        $plainText = strip_tags($htmlString);
+        $decodedText = html_entity_decode($plainText);
+        $normalizedText = trim($decodedText);
+
+        return $normalizedText;
+    }
 }

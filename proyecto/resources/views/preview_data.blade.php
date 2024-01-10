@@ -190,7 +190,7 @@ background-color: #C0C0C0;
         @if ( $params['province_name'] == 'TODAS' )
             Tenerife y Gran Canaria
         @else
-            @if ( $params['province_name'] == 'Las Palmas' )
+            @if ( $params['province_name'] == 'Provincia de Las Palmas' )
                 Gran Canaria
             @else
                 Tenerife
@@ -204,8 +204,8 @@ background-color: #C0C0C0;
 
     <div class="d-flex flex-row text-left  mt-2">
         <ul>
-        @foreach ($preguntas as $pregunta)
-        <li><strong>{{$pregunta->type}}: </strong> {{$pregunta->value}}</li>
+        @foreach ($preguntas as $i=> $pregunta)
+        <li><strong>PREGUNTA {{$i+1}}: </strong> {{$pregunta->question}}</li>
         @endforeach
         </ul>
     </div>
@@ -228,7 +228,7 @@ background-color: #C0C0C0;
                  {{$totalProvincia['Provincia de Las Palmas']}} en Gran Canaria.
             @endif
         @else
-            @if ( $params['province_name'] == 'Las Palmas' )
+            @if ( $params['province_name'] == 'Provincia de Las Palmas' )
                 {{$totalProvincia['Provincia de Las Palmas']}} en Gran Canaria.
             @else
                 {{$totalProvincia['Provincia de Tenerife']}} en Tenerife.
@@ -285,7 +285,7 @@ background-color: #C0C0C0;
             </div>
         @endif
 
-    @elseif  ( $params['province_name'] == 'Las Palmas' && ($params['centre']!= 'LP1' && $params['centre']!= 'LP9'))
+    @elseif  ( $params['province_name'] == 'Provincia de Las Palmas')
         @if ( isset($totalProvincia['Provincia de Las Palmas']) )
             <div>
                 <div class="googleChartTitle">
@@ -294,20 +294,20 @@ background-color: #C0C0C0;
             </div> 
         @endif 
     @endif
-    @if ( $params['province_name'] == 'Las Palmas' && $params['centre']== 'LP1') 
-        <div>
+    {{-- @if ( $params['province_name'] == 'Provincia de Las Palmas')  --}}
+        {{-- <div>
             <div class="googleChartTitle">
                 <div id="other_services_poli" class="bar-chart"></div>
             </div>
-        </div> 
-    @elseif ( $params['province_name'] == 'Las Palmas' && $params['centre']== 'LP9') 
+        </div>  --}}
+    {{-- @elseif ( $params['province_name'] == 'Provincia de Las Palmas') 
         <div>
             <div class="googleChartTitle">
             <div id="other_services_hct" class="bar-chart"></div>
             </div>
         </div>  
-    @endif
-    @if ( $params['province_name'] == 'Tenerife')
+    @endif --}}
+    @if ( $params['province_name'] == 'Provincia de Tenerife')
         @if ( isset($totalProvincia['Provincia de Tenerife']) )
             <div>
                 <div class="googleChartTitle">
@@ -344,13 +344,13 @@ background-color: #C0C0C0;
             </div>
         </div>
         @endif
-    @elseif ( $params['province_name'] == 'Las Palmas' && $params['centre_name'] == 'TODOS')
+    @elseif ( $params['province_name'] == 'Provincia de Las Palmas' && $params['centre_name'] == 'TODOS')
             <div>
                 <div class="googleChartTitle">
                     <div id ="centres_lpa" class="bar-chart"></div>
                 </div>
             </div>
-    @elseif ( $params['province_name'] == 'Tenerife' && $params['centre_name'] == 'TODOS')
+    @elseif ( $params['province_name'] == 'Provincia de Tenerife' && $params['centre_name'] == 'TODOS')
             <div>
                 <div class="googleChartTitle">
                     <div id ="centres_tfe" class="bar-chart"></div>
@@ -418,8 +418,8 @@ background-color: #C0C0C0;
         @foreach ($preguntas as $i=>$pregunta)
             @foreach ($porcentPreg as $ppreg)
                 @if ( $loop->iteration == $i +1 && $loop->iteration < 6)
-                    <strong>{{$pregunta->type}} => {{$ppreg}}% </strong><br>
-                    {{$pregunta->value}}  <br>
+                    <strong>Pregunta {{$i+1}} => {{$ppreg}}% </strong><br>
+                    {{$pregunta->question}}  <br>
                     <br>
                     @if ( $loop->iteration == 5 )
                   
@@ -439,9 +439,8 @@ background-color: #C0C0C0;
     var colours = ['#FF7F50', '#FFD700', '#00FFFF', '#FFA500',  '#EE82EE'];
     var mycolors = [ '#C9C365','#21CCAD', '#FAC559','#F86569', '#8197AF', '#B1A9B1'];
     $totalCompanies= '';
-    console.log(params['company']);
+    // console.log(params['company']);
     init();
-
 
    // window.onload = function() {
     function init(){
@@ -466,22 +465,18 @@ background-color: #C0C0C0;
                 drawSexChar(); 
                 drawAgeChar();
                 
-                if (provincia  == 'Las Palmas' || provincia  == 'TODAS') {
+                if (provincia  == 'Provincia de Las Palmas' || provincia  == 'TODAS') {
                     @if ( isset($totalProvincia['Provincia de Las Palmas']) )
                     if(centre == 'TODOS'){
                         drawCentreLPAChart();
                         drawServicesCharLPA();
 
-                    }else if (centre_id == 'LP1'){
-                        drawPoliServicesChart();
-                    }else if (centre_id == 'LP9'){
-                        drawHCTServicesChart();
                     }else{
                         drawServicesCharLPA();
                     }
                     @endif
                 }
-                if (provincia  == 'Tenerife' || provincia  == 'TODAS') {
+                if (provincia  == 'Provincia de Tenerife' || provincia  == 'TODAS') {
                 @if ( isset($totalProvincia['Provincia de Tenerife']) )
                     if(centre == 'TODOS'){
                         drawCentreTFEChart();
@@ -555,12 +550,12 @@ $(window).scroll(function(){
         var data = new google.visualization.DataTable();
         data.addColumn('string', 'Pizza');
         data.addColumn('number', 'Populartiy');
+        @foreach ($totalSexo as $i => $te)
         data.addRows([
-            ['Hombre', {{$totalSexo['Hombre']}}],
-            ['Mujer', {{$totalSexo['Mujer']}}]
-        ]);
-
-        // TODO ... POSITION TITTLE
+            ['{{$te->sexo}}', {{$te->total}}],
+                ]);
+        @endforeach
+       
         var options = {
             title: 'GÉNERO',
             titleTextStyle: {bold:true, fontSize:20},
@@ -1106,7 +1101,6 @@ $(window).scroll(function(){
     role: 'annotation'
   }]);
 
-
         var options = {title: 'CENTROS ICOT TENERIFE',
                         backgroundColor: '#EAECEE'
                         ,titleTextStyle: {
@@ -1155,7 +1149,7 @@ function drawQuestionsChart() {
         @foreach ($preguntas as $j=> $pregunta)
             @foreach ($porcentPreg as $i => $ppreg)
                 @if ( $loop->iteration == $j + 1 )
-            var row = ["{{$pregunta->type}}", {{$ppreg}}, mycolors[{{$i}}], {{$ppreg}} +'%'];
+            var row = ["{{$j}}", {{$ppreg}}, mycolors[{{$i}}], {{$ppreg}} +'%'];
             questionData.push(row);
                 @endif
             @endforeach
@@ -1167,7 +1161,6 @@ function drawQuestionsChart() {
             titleTextStyle: {bold:true, fontSize:20, margin:15},
             width: 800,
             height: 400,
-            // bar: {groupWidth: "70%"},
             legend: {position:'none'},
             vAxis: {
                 title: 'PORCENTAJE', 
