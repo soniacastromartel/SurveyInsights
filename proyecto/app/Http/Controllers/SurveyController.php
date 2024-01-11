@@ -166,7 +166,7 @@ class SurveyController extends BaseController
             $this->whereCompany = '';
             if ($params['company'] != -1) {
                 $campoCompany = $this->getCampoCompany($params);
-                if ($params['company'] !== 0) {
+                if ($params['company'] != '0') {
                     if (is_array($campoCompany)) {
                         foreach ($campoCompany as $company) {
                             $where[] = $this->surveyName . '.' . $company['column'] . ' = \'' . $company['code'] . '\'';
@@ -179,7 +179,7 @@ class SurveyController extends BaseController
                     } else {
                         $this->whereCompany = $this->surveyName . '.' . $campoCompany . ' = \'' . $params['company'] . '\'';
                     }
-                } else if ($params['company'] === 0) {
+                } else if ($params['company'] == '0') {
                     $this->whereCompany = $this->surveyName . '.' . $campoCompany . ' is not null';
                 }
             }
@@ -1004,7 +1004,7 @@ class SurveyController extends BaseController
     {
         try {
             $datos = $this->getData($request);
-            $render = view('preview_data', $datos)->render();
+            $render = view('test', $datos)->render();
             $renderCover = view('cover', $datos)->render();
             $header = view()->make('header')->render();
 

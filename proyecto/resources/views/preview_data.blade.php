@@ -8,6 +8,7 @@
 
     <!-- <script type="text/javascript" src="https://www.google.com/jsapi"></script> -->
      {{-- <script src="https://www.gstatic.com/charts/loader.js"></script> --}}
+     
 
     <link rel="stylesheet" href="{{ asset('css/bootstrap.min.css') }}" />
     <script src="{{asset('js/bootstrap.min.js') }}"></script>
@@ -141,7 +142,7 @@ background-color: #C0C0C0;
     </style>
 </head>
 
-<body body onload="init();">
+<body onload="init();">
 <br>
 <h1>{{$title}}</h1>
 
@@ -154,9 +155,6 @@ background-color: #C0C0C0;
     @endif
 </div>
     <hr>
-
-
-  
 
     <div class="d-flex flex-row text-left mt-4 pregunta">
         ¿Cuándo?
@@ -446,7 +444,7 @@ background-color: #C0C0C0;
     function init(){
         google.load('visualization','44', {
             packages: ['corechart']
-            }); 
+                    }); 
 
         var interval = setInterval(function() { 
             if ( google.visualization !== undefined && google.visualization.DataTable !== undefined && google.visualization.PieChart !== undefined ){ 
