@@ -4,7 +4,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-     <script type="text/javascript" src="http://www.google.com/jsapi"></script>
+    <script src="http://www.google.com/jsapi"></script>
 
     <!-- <script type="text/javascript" src="https://www.google.com/jsapi"></script> -->
      {{-- <script src="https://www.gstatic.com/charts/loader.js"></script> --}}
@@ -142,7 +142,7 @@ background-color: #C0C0C0;
     </style>
 </head>
 
-<body onload="init();">
+<body body onload="init();">
 <br>
 <h1>{{$title}}</h1>
 
@@ -437,14 +437,15 @@ background-color: #C0C0C0;
     var colours = ['#FF7F50', '#FFD700', '#00FFFF', '#FFA500',  '#EE82EE'];
     var mycolors = [ '#C9C365','#21CCAD', '#FAC559','#F86569', '#8197AF', '#B1A9B1'];
     $totalCompanies= '';
-    // console.log(params['company']);
+    console.log(params['company']);
     init();
+
 
    // window.onload = function() {
     function init(){
         google.load('visualization','44', {
             packages: ['corechart']
-                    }); 
+            }); 
 
         var interval = setInterval(function() { 
             if ( google.visualization !== undefined && google.visualization.DataTable !== undefined && google.visualization.PieChart !== undefined ){ 
@@ -463,18 +464,22 @@ background-color: #C0C0C0;
                 drawSexChar(); 
                 drawAgeChar();
                 
-                if (provincia  == 'Provincia de Las Palmas' || provincia  == 'TODAS') {
+                if (provincia  == 'Las Palmas' || provincia  == 'TODAS') {
                     @if ( isset($totalProvincia['Provincia de Las Palmas']) )
                     if(centre == 'TODOS'){
                         drawCentreLPAChart();
                         drawServicesCharLPA();
 
+                    }else if (centre_id == 'LP1'){
+                        drawPoliServicesChart();
+                    }else if (centre_id == 'LP9'){
+                        drawHCTServicesChart();
                     }else{
                         drawServicesCharLPA();
                     }
                     @endif
                 }
-                if (provincia  == 'Provincia de Tenerife' || provincia  == 'TODAS') {
+                if (provincia  == 'Tenerife' || provincia  == 'TODAS') {
                 @if ( isset($totalProvincia['Provincia de Tenerife']) )
                     if(centre == 'TODOS'){
                         drawCentreTFEChart();
@@ -539,6 +544,7 @@ $(window).scroll(function(){
 });
 
 });
+
 
  
 /**

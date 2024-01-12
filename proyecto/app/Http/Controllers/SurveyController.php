@@ -1004,14 +1004,14 @@ class SurveyController extends BaseController
     {
         try {
             $datos = $this->getData($request);
-            $render = view('test', $datos)->render();
+            $render = view('preview_data', $datos)->render();
             $renderCover = view('cover', $datos)->render();
             $header = view()->make('header')->render();
 
             $pdf = new Pdf;
             $pdf->setOptions([
                 // 'enable-javascript' => true,
-                'javascript-delay' => 1000,
+                'javascript-delay' => 2000,
                 'header-html' => $header,
                 // 'header-spacing' => 10,
                 'header-line',
