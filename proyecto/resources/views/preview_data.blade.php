@@ -292,19 +292,7 @@ background-color: #C0C0C0;
             </div> 
         @endif 
     @endif
-    {{-- @if ( $params['province_name'] == 'Provincia de Las Palmas')  --}}
-        {{-- <div>
-            <div class="googleChartTitle">
-                <div id="other_services_poli" class="bar-chart"></div>
-            </div>
-        </div>  --}}
-    {{-- @elseif ( $params['province_name'] == 'Provincia de Las Palmas') 
-        <div>
-            <div class="googleChartTitle">
-            <div id="other_services_hct" class="bar-chart"></div>
-            </div>
-        </div>  
-    @endif --}}
+
     @if ( $params['province_name'] == 'Provincia de Tenerife')
         @if ( isset($totalProvincia['Provincia de Tenerife']) )
             <div>
@@ -464,22 +452,18 @@ background-color: #C0C0C0;
                 drawSexChar(); 
                 drawAgeChar();
                 
-                if (provincia  == 'Las Palmas' || provincia  == 'TODAS') {
+                if (provincia  == 'Provincia de Las Palmas' || provincia  == 'TODAS') {
                     @if ( isset($totalProvincia['Provincia de Las Palmas']) )
                     if(centre == 'TODOS'){
                         drawCentreLPAChart();
                         drawServicesCharLPA();
 
-                    }else if (centre_id == 'LP1'){
-                        drawPoliServicesChart();
-                    }else if (centre_id == 'LP9'){
-                        drawHCTServicesChart();
-                    }else{
-                        drawServicesCharLPA();
                     }
+                        drawServicesCharLPA();
+                    
                     @endif
                 }
-                if (provincia  == 'Tenerife' || provincia  == 'TODAS') {
+                if (provincia  == 'Provincia de Tenerife' || provincia  == 'TODAS') {
                 @if ( isset($totalProvincia['Provincia de Tenerife']) )
                     if(centre == 'TODOS'){
                         drawCentreTFEChart();

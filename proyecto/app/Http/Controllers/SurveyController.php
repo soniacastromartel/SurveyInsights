@@ -544,7 +544,7 @@ class SurveyController extends BaseController
     function queryServices($where, $params)
     {
         $surveyCode = $this->fields[env('PARAM_SERVICE')]['code'];
-        // $codelp = [substr($this->fields['servicios_hct']['name'], -3), substr($this->fields['servicios_pol']['name'], -3)];
+        // $codelp = [substr($this->fields['servicios_hct']['name'], -3), substrp($this->fields['servicios_pol']['name'], -3)];
         $totalServicesLP = [];
         $totalServicesTF = [];
 
@@ -975,16 +975,6 @@ class SurveyController extends BaseController
                 $data['totalOtherCompanies'] = $totalOtherCompanies;
             } else {
                 $data['totalOtherCompanies'] = [];
-            }
-            if (isset($serviciosPoliclinico)) {
-                $data['serviciosPoliclinico'] = $serviciosPoliclinico;
-            } else {
-                $data['serviciosPoliclinico'] = [];
-            }
-            if (isset($serviciosHCT)) {
-                $data['serviciosHCT'] = $serviciosHCT;
-            } else {
-                $data['serviciosHCT'] = [];
             }
 
             return $data;
