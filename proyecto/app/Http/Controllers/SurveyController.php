@@ -688,12 +688,13 @@ class SurveyController extends BaseController
 
 
     /**
-     * Resultados por centro
+     * Resultados de servicios por centro
      */
-    function queryCentros($where)
+    function  queryCentros($where)
     {
         $alias = 'centro';
         $campoCentroLpa = $this->fields[env('PARAM_CENTRE_LPA')]['field'];
+        $campoPregunta= $this->fields[env('PARAM_QUESTION5')]['field'];
         $qid = $this->fields[env('PARAM_CENTRE_LPA')]['code'];
         $centreLpa = LimeAnswer::getNames($qid);
         $auxWhere = $this->whereProvincias;
@@ -705,12 +706,22 @@ class SurveyController extends BaseController
             $e = 0;
             foreach ($totalCentreLpa as $totCentLpa) {
                 if ($cLpa->answer ==  $totCentLpa->centro) {
+                    $satisfaction= CurrentSurvey:: getPercents($campoPregunta,$totCentLpa->total, 'satisfaccion', $whereCond,$this->periodTime, true, $campoCentroLpa,$cLpa->code );
                     $e = 1;
-                    $totalCentLpa[] = (object) array('centro' => $totCentLpa->centro, 'total' => $totCentLpa->total);
+                    $totalCentLpa[] = (object) array(
+                        'centro' => $totCentLpa->centro, 
+                        'total' => $totCentLpa->total,
+                        'satisfaction' => $satisfaction
+                    
+                    );
                 }
             }
             if ($e == 0) {
-                $totalCentLpa[] = (object) array('centro' => $cLpa->answer, 'total' => 0);
+                $totalCentLpa[] = (object) array(
+                    'centro' => $cLpa->answer, 
+                    'total' => 0,
+                    'satisfaction' => 0
+                );
             }
         }
         $this->whereProvincias = $this->whereProvinciasTfe;
@@ -724,17 +735,32 @@ class SurveyController extends BaseController
             $e = 0;
             foreach ($totalCentreTfe as $totCenTfe) {
                 if ($service->answer == $totCenTfe->centro) {
+                    $satisfaction= CurrentSurvey:: getPercents($campoPregunta,$totCenTfe->total, 'satisfaccion', $whereCond,$this->periodTime, true, $campoCentroTfe,$service->code );
                     $e = 1;
-                    $totalServices[] = (object) array('centro' => $totCenTfe->centro, 'total' => $totCenTfe->total);
+                    $totalServices[] = (object) array(
+                        'centro' => $totCenTfe->centro, 
+                        'total' => $totCenTfe->total,
+                        'satisfaction' => $satisfaction,                    
+                    );
                 }
             }
             if ($e == 0) {
-                $totalServices[] = (object) array('centro' => $service->answer, 'total' => 0);
+                $totalServices[] = (object) array('centro' => $service->answer, 'total' => 0,
+                'satisfaction' => 0);
             }
         }
         $this->whereProvincias = $auxWhere;
         return ['Tenerife' => $totalServices, 'Las Palmas' => $totalCentLpa];
     }
+
+
+    // function querySatisfaction( $where, $totalCentros){
+    //     foreach ($totalCentros as $totalCentro) {
+    //         foreach ($totalCentro as $total) {
+    //             $total= $total;
+    //         }
+    //     }
+    // }
 
     /**
      * Obtener cantidad de encuestas por mes
@@ -798,23 +824,22 @@ class SurveyController extends BaseController
         }
     }
 
-    //Resultados de satisfacción por centro (ejemplo para HCT)
-    //select la.answer,ls.891295X38X312 , count(ls.891295X39X313SQ005)
-    // , COUNT(ls.891295X39X313SQ005) * 100 /  (select COUNT(*) from lime_survey_891295 ls
-    // where ls.submitdate between '2023-01-01' and '2023-06-23'
-    // and ls.891295X38X312 = 'LP9'
-    // and ls.891295X38X312 is not NULL) as percent_total
-    // from lime_survey_891295 ls
-    // inner join lime_answers la
-    // on la.code = ls.891295X38X312 and la.qid = 312
-    // WHERE (ls.891295X39X313SQ005 = 'A5' OR ls.891295X39X313SQ005 = 'A4')
-    // AND ls.891295X38X312 is not NULL
-    // and ls.submitdate between '2023-01-01' and '2023-06-23'
-    // and la.qid = 312
-    // and ls.891295X38X312 = 'LP9'
-    // group by ls.891295X38X312
-    // order by count(ls.891295X39X313SQ005) DESC
-
+    //Resultados de satisfacción por centro (ejemplo para Parque TFE)
+//     select la.answer as centro, COUNT(ls.989931X50X425) * 100 / (select COUNT(ls.989931X49X416)  from lime_survey_989931 ls inner join lime_answers la 
+// on ls.989931X49X416 = la.code 
+// and la.qid = 416  
+// where ls.989931X50X425 is not null and ls.submitdate is not NULL 
+// and ls.submitdate  between '2023-07-01' and '2024-01-12'
+// and ls.989931X49X416 = 'TF8'
+// group by la.answer ) as satisfaccion
+// from lime_survey_989931 ls inner join lime_answers la 
+// on ls.989931X49X416 = la.code 
+// and la.qid = 416  
+// where ls.989931X50X425 is not null and ls.submitdate is not NULL 
+// and ls.submitdate  between '2023-07-01' and '2024-01-12'
+// and ls.989931X49X416 = 'TF8'
+// and (ls.989931X50X425 = 'A1' OR ls.989931X50X425 = 'A2')
+// group by la.answer 
 
     /**
      * Obtener Porcentajes de satisfacción por pregunta
@@ -831,12 +856,14 @@ class SurveyController extends BaseController
 
         foreach ($preguntas as $i => $pregunta) {
             $campoPregunta =   $this->fields[env('PARAM_QUESTION' . ($i + 1))]['field'];
-            $porcentPreg[($i + 1)] = DB::table('lime_survey_' . $id)
-                ->selectRaw('COUNT(`' . $campoPregunta . '`) * 100 / ' . $this->totalEncuestados . ' as percent_total')
-                ->whereBetween($this->fields[env('PARAM_DATE')]['name'], [$this->periodTime[0], $this->periodTime[1]])
-                ->whereIn($campoPregunta, ['A1', 'A2'])
-                ->whereRaw($where)
-                ->value('percent_total');
+            $porcentPreg[($i + 1)] = CurrentSurvey :: getPercents($campoPregunta, $this->totalEncuestados,'percent_total',$where, $this->periodTime, false );
+            
+            // DB::table('lime_survey_' . $id)
+            //     ->selectRaw('COUNT(`' . $campoPregunta . '`) * 100 / ' . $this->totalEncuestados . ' as percent_total')
+            //     ->whereBetween($this->fields[env('PARAM_DATE')]['name'], [$this->periodTime[0], $this->periodTime[1]])
+            //     ->whereIn($campoPregunta, ['A1', 'A2'])
+            //     ->whereRaw($where)
+            //     ->value('percent_total');
         }
         foreach ($preguntas as $i => $pregunta) {
             $total = 0;
@@ -914,28 +941,17 @@ class SurveyController extends BaseController
             $this->totalEncuestados = $this->getEncuestados($params['province_name'],  $totalProvincia);
 
             $where = $this->getWhere();
-            // $where = $this ->checkRepeatedWords($whereCond, ' and and ', ' and');
-
             $totalSexos = $this->querySexos($where);
             $totalEdades = $this->queryEdades($where);
             $totalExperiencia = $this->queryExperiencia($where);
             $totalCentros = $this->queryCentros($where);
+            // $totalCentrosSatisfaction= $this->querySatisfaction( $where, $totalCentros);
             $totalServicios = $this->queryServices($where, $params);
             $totalSatisfaccion = $this->queryNetPromoterScore($where);
             $totalSurveys = $this->querySurveyQuantity($where);
             $preguntas = $this->queryPreguntas($params['survey_id']);
             $porcentPreg = $this->queryPercents($where, $params['survey_id'], $preguntas);
             $tiposAsistencia = $this->queryCarePlan($where);
-
-            // if ($params['centre'] == 'LP1') {
-            //     $code = substr($this->fields['servicios_pol']['name'], -3);
-            //     $serviciosPoliclinico = $this->queryOtherServices($where, $code);
-            // }
-            // if ($params['centre'] == 'LP9') {
-            //     $code = substr($this->fields['servicios_hct']['name'], -3);
-            //     $serviciosHCT = $this->queryOtherServices($where, $code);
-            // }
-
             if ($params['patient_id'] == 'T1' || $params['patient_id'] == 'T2' || $params['patient_id'] == 'T3') {
                 if ($params['company'] != 0) {
                     $totalCompanies = $this->queryCompaniesTotal($params, $where);

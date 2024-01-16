@@ -70,6 +70,26 @@ class CurrentSurvey extends Model
         return $total;
     }
 
+    public function scopeGetPercents ($query, $code, $divide, $alias,$whereCond = null, $periodTime, $isSatisfaction = false, $row = null, $centreCode= null){
+        $percent= CurrentSurvey:: selectRaw('COUNT(`' . $code . '`) * 100 / ' . $divide . ' as ' . $alias)
+        ->whereBetween('submitdate', [$periodTime])
+        ->whereNotNull('submitdate')
+        ->whereIn($code, ['A1', 'A2']);
+
+        if (!empty($whereCond)) {
+            $percent->whereRaw($whereCond);
+        }
+
+        if($isSatisfaction){
+            $percent -> whereRaw($row.' = ?',[$centreCode]);
+        }
+
+        $result= round($percent->value($alias),2) ;
+        
+
+        return $result;
+    }
+
 
 
     public function scopeGetResults($query, $code, $alias, $whereCond = null, $periodTime)
